@@ -415,16 +415,31 @@ function App() {
     await new Promise((r) => setTimeout(r, 300));
   };
 
-  // Strip any nested iframe/script tags before we store the generated html.
+  // Strip any nested iframe/script tags and hostile injections before storing the generated HTML.
+  // Preserve safe CSS and inline styles; do not inject any app UI elements.
   const sanitizeGeneratedHtml = (html) => {
     if (!html || typeof html !== 'string') return '';
     let out = html;
+
+    // Remove scripts and iframes
+    out = out.replace(/<script[\s\S]*?<\/script>/gi, '');
+    out = out.replace(/<script[^>]*\/>/gi, '');
     out = out.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
     out = out.replace(/<iframe[^>]*\/>/gi, '');
-    out = out.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+    // Remove inline event handlers
     out = out.replace(/\son\w+="[^"]*"/gi, '').replace(/\son\w+='[^']*'/gi, '');
+
+    // Prevent confusion with host root id
     out = out.replace(/id\s*=\s*["']root["']/gi, 'id="preview-root"');
-    return out;
+
+    // Remove external resource links that could inject app UI or toolbars
+    out = out.replace(/<link[^>]+rel=["']?(?:preload|modulepreload|stylesheet|prefetch|preconnect)["']?[^>]*>/gi, '');
+
+    // Heuristic: strip toolbars/placeholders markers
+    out = out.replace(/<[^>]+(?:data-app-ui|data-preview-toolbar|class=["'][^"']*(?:app-toolbar|preview-toolbar|app-placeholder)[^"']*["'])[^>]*>[\s\S]*?<\/[^>]+>/gi, '');
+
+    return out.trim();
   };
 
   const handleGenerate = async (nextPrompt) => {
