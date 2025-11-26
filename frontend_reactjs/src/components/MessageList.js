@@ -10,27 +10,8 @@ const THEME = {
 function ChatMessage({ role, content }) {
   const isUser = role === 'user';
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: isUser ? 'flex-end' : 'flex-start',
-        marginBottom: 10
-      }}
-      aria-live="polite"
-    >
-      <div
-        style={{
-          maxWidth: '80%',
-          padding: '10px 12px',
-          borderRadius: 14,
-          background: isUser ? THEME.primary : THEME.surface,
-          color: isUser ? '#fff' : THEME.text,
-          border: isUser ? 'none' : `1px solid ${THEME.border}`,
-          boxShadow: isUser
-            ? '0 8px 20px rgba(37,99,235,0.25)'
-            : '0 6px 16px rgba(17,24,39,0.04)'
-        }}
-      >
+    <div className={`msg ${isUser ? 'user' : 'assistant'}`} aria-live="polite">
+      <div className="msg-bubble">
         {content}
       </div>
     </div>

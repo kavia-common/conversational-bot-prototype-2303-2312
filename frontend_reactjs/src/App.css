@@ -1,13 +1,37 @@
-/* Ocean Professional UI helpers and resets */
+/* Ocean Professional Theme: variables + layout + component styles */
 :root {
+  /* Brand */
   --kavia-primary: #2563EB;
   --kavia-secondary: #F59E0B;
   --kavia-error: #EF4444;
+
+  /* Surfaces */
   --kavia-bg: #f9fafb;
   --kavia-surface: #ffffff;
+
+  /* Text */
   --kavia-text: #111827;
   --kavia-muted: #6b7280;
+
+  /* Borders/shadows */
   --kavia-border: rgba(17, 24, 39, 0.08);
+  --kavia-ring: rgba(37, 99, 235, 0.35);
+
+  /* Elevation helpers */
+  --shadow-sm: 0 6px 16px rgba(17,24,39,0.04);
+  --shadow-md: 0 10px 30px rgba(17,24,39,0.06);
+  --shadow-lg: 0 12px 28px rgba(17,24,39,0.1);
+
+  /* Sizing */
+  --sidebar-min: 280px;
+  --sidebar-max: 360px;
+  --topbar-h: 64px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Transition */
+  --ease: 0.2s ease;
 }
 
 [data-theme="dark"] {
@@ -16,58 +40,203 @@
   --kavia-text: #e5e7eb;
   --kavia-muted: #94a3b8;
   --kavia-border: rgba(148, 163, 184, 0.24);
+  --shadow-sm: 0 6px 16px rgba(0,0,0,0.35);
+  --shadow-md: 0 10px 30px rgba(0,0,0,0.45);
+  --shadow-lg: 0 12px 28px rgba(0,0,0,0.5);
 }
 
+/* Root app grid */
 .App {
   background: var(--kavia-bg);
   color: var(--kavia-text);
   min-height: 100vh;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  display: grid;
+  grid-template-columns: minmax(var(--sidebar-min), var(--sidebar-max)) 1fr;
+  transition: background-color var(--ease), color var(--ease);
 }
 
-.theme-toggle {
-  background-color: var(--kavia-primary);
+/* Sidebar (chat panel) */
+.app-sidebar {
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: var(--kavia-surface);
+  border-right: 1px solid var(--kavia-border);
+  display: flex;
+  flex-direction: column;
+}
+
+/* TopBar area inside sidebar */
+.app-topbar {
+  padding: 16px;
+  border-bottom: 1px solid var(--kavia-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Message list container (scrollable) */
+.app-messages {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Chat message bubbles */
+.msg {
+  display: flex;
+  margin-bottom: 10px;
+}
+.msg.user { justify-content: flex-end; }
+.msg.assistant { justify-content: flex-start; }
+.msg-bubble {
+  max-width: 80%;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--kavia-border);
+  background: var(--kavia-surface);
+  color: var(--kavia-text);
+}
+.msg.user .msg-bubble {
+  background: linear-gradient(180deg, var(--kavia-primary), #1e4fbf);
   color: #fff;
   border: none;
-  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(37,99,235,0.25);
+}
+
+/* Chat input form */
+.app-chat-form {
+  padding: 16px;
+  border-top: 1px solid var(--kavia-border);
+}
+.app-chat-input {
+  display: flex;
+  gap: 8px;
+  background: var(--kavia-surface);
+  border: 1px solid var(--kavia-border);
+  border-radius: var(--radius-md);
+  padding: 8px;
+}
+.app-chat-input input[type="text"],
+.app-chat-input input[type="search"],
+.app-chat-input input[type="email"],
+.app-chat-input input[type="url"],
+.app-chat-input input[type="password"],
+.app-chat-input textarea {
+  flex: 1;
+  border: none;
+  outline: none;
   padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--kavia-text);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow var(--ease), background var(--ease), color var(--ease), border-color var(--ease), opacity var(--ease);
+}
+.btn-primary {
+  background: linear-gradient(180deg, var(--kavia-primary), #1e4fbf);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(37,99,235,0.35);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(37,99,235,0.45); }
+.btn-ghost {
+  border: 1px solid var(--kavia-border);
+  background: var(--kavia-surface);
+  color: var(--kavia-text);
+}
+.theme-toggle {
+  background: var(--kavia-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform .15s ease, box-shadow .2s ease, opacity .2s ease;
+  transition: transform .15s ease, box-shadow var(--ease), opacity var(--ease);
   box-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
 }
-
 .theme-toggle:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35);
   opacity: 0.95;
 }
+.theme-toggle:active { transform: translateY(0); }
 
-.theme-toggle:active {
-  transform: translateY(0);
+/* Accessible focus styles */
+:focus-visible {
+  outline: 2px solid var(--kavia-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 3px var(--kavia-ring);
 }
 
-/* Generic buttons */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  gap: 8px; padding: 10px 14px; border: none; border-radius: 12px;
-  font-weight: 700; cursor: pointer;
+/* Main preview area */
+.app-main {
+  min-height: 100vh;
+  background: var(--kavia-bg);
+  display: grid;
+  grid-template-rows: var(--topbar-h) 1fr;
+}
+.preview-header {
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--kavia-border);
+  background: var(--kavia-surface);
+}
+.preview-canvas {
+  padding: 16px;
+}
+.preview-frame {
+  background: var(--kavia-surface);
+  border: 1px solid var(--kavia-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow var(--ease);
+}
+.preview-frame:hover {
+  box-shadow: var(--shadow-lg);
 }
 
-/* Responsive layout tweaks for narrow screens: turn grid into stacked layout */
+/* Utility */
+.text-muted { color: var(--kavia-muted); font-size: 13px; }
+
+/* Responsive: stack on mobile */
 @media (max-width: 980px) {
   .App {
     display: block !important;
   }
-  aside {
+  .app-sidebar {
     position: relative !important;
     height: auto !important;
     border-right: none !important;
     border-bottom: 1px solid var(--kavia-border);
   }
-  /* Ensure preview header doesn't leave extra space if text wraps or adjusts */
-  main > div:first-child {
-    min-height: 64px;
-  }
+  .preview-header { min-height: var(--topbar-h); }
 }
+
+/* Ensure no leftover preview inner headers/spacing in iframe content:
+   We only style our container around the iframe. The iframe content itself is generated. */

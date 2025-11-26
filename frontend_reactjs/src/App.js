@@ -193,62 +193,31 @@ function AppInner() {
   }, [messages, isTyping, indicatorText]);
 
   return (
-    <div
-      className="App"
-      style={{
-        minHeight: '100vh',
-        background: THEME.background,
-        color: THEME.text,
-        display: 'grid',
-        gridTemplateColumns: 'minmax(280px, 360px) 1fr',
-        gap: 0
-      }}
-    >
+    <div className="App">
       {/* Sidebar - Chat */}
-      <aside
-        style={{
-          height: '100vh',
-          position: 'sticky',
-          top: 0,
-          background: THEME.surface,
-          borderRight: `1px solid ${THEME.border}`,
-          display: 'flex',
-          flexDirection: 'column'
-        }}
-      >
-        <TopBar theme={theme} onToggleTheme={toggleTheme} onReset={handleReset} />
-        <MessageList messages={renderedMessages} isGenerating={isGenerating && !isTyping} />
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          isGenerating={isGenerating}
-          error={error}
-          useApi={useApi}
-          apiBase={apiBase}
-          onSubmit={onSubmit}
-        />
+      <aside className="app-sidebar" aria-label="Chat panel">
+        <div className="app-topbar">
+          <TopBar theme={theme} onToggleTheme={toggleTheme} onReset={handleReset} />
+        </div>
+        <div className="app-messages" aria-label="Chat history">
+          <MessageList messages={renderedMessages} isGenerating={isGenerating && !isTyping} />
+        </div>
+        <div className="app-chat-form">
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            isGenerating={isGenerating}
+            error={error}
+            useApi={useApi}
+            apiBase={apiBase}
+            onSubmit={onSubmit}
+          />
+        </div>
       </aside>
 
       {/* Main Canvas - Preview */}
-      <main
-        style={{
-          minHeight: '100vh',
-          background: THEME.background,
-          display: 'grid',
-          gridTemplateRows: '64px 1fr'
-        }}
-      >
-        <div
-          style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 20px',
-            borderBottom: `1px solid ${THEME.border}`,
-            background: THEME.surface
-          }}
-        >
+      <main className="app-main" aria-label="Preview panel">
+        <div className="preview-header" role="group" aria-label="Preview header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span
               aria-hidden="true"
@@ -259,26 +228,15 @@ function AppInner() {
             />
             <strong>Live Preview</strong>
           </div>
-          <div style={{ color: THEME.subtle, fontSize: 13 }}>
-            Sandboxed iframe preview updates with each prompt.
+          {/* Remove verbose helper text to avoid any leftover header/spacing within preview area */}
+          <div className="text-muted" aria-live="polite" style={{ fontSize: 13 }}>
+            Updates with each prompt
           </div>
         </div>
 
-        <div style={{ padding: 16 }}>
-          <div
-            style={{
-              background: THEME.surface,
-              border: `1px solid ${THEME.border}`,
-              borderRadius: 16,
-              overflow: 'hidden',
-              boxShadow: '0 10px 30px rgba(17,24,39,0.06)',
-              transition: 'box-shadow .2s ease'
-            }}
-          >
-            <Preview
-              html={previewSrcDoc}
-              height="calc(100vh - 64px - 32px)"
-            />
+        <div className="preview-canvas">
+          <div className="preview-frame">
+            <Preview html={previewSrcDoc} height="calc(100vh - 64px - 32px)" />
           </div>
         </div>
       </main>

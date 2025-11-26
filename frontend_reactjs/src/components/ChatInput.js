@@ -21,68 +21,40 @@ export default function ChatInput({
 }) {
   /** Public function: chat input form with submit and status messaging. */
   return (
-    <form onSubmit={onSubmit} style={{ padding: 16, borderTop: `1px solid ${THEME.border}` }}>
+    <form onSubmit={onSubmit}>
       <label htmlFor="prompt" style={{ display: 'none' }}>
         Prompt
       </label>
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          background: 'var(--kavia-surface)',
-          border: `1px solid ${THEME.border}`,
-          borderRadius: 14,
-          padding: 8
-        }}
-      >
+      <div className="app-chat-input">
         <input
           id="prompt"
+          type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder='e.g., "Create a dark SaaS landing with features, articles, and contact"'
           aria-label="Enter your prompt"
-          style={{
-            flex: 1,
-            border: 'none',
-            outline: 'none',
-            padding: '10px 12px',
-            borderRadius: 10,
-            background: 'transparent',
-            color: THEME.text
-          }}
         />
         <button
           type="submit"
           disabled={isGenerating}
           className="btn btn-primary"
-          style={{
-            padding: '10px 14px',
-            borderRadius: 12,
-            border: 'none'
-          }}
           aria-label="Send prompt"
+          title={isGenerating ? 'Generating...' : 'Send'}
         >
           {isGenerating ? 'Generating...' : 'Send'}
         </button>
       </div>
       {error ? (
-        <div
-          role="alert"
-          style={{
-            color: THEME.error,
-            marginTop: 8,
-            fontSize: 13
-          }}
-        >
+        <div role="alert" style={{ color: THEME.error, marginTop: 8, fontSize: 13 }}>
           {error}
         </div>
       ) : null}
       {useApi ? (
-        <div style={{ marginTop: 8, color: 'var(--kavia-muted)', fontSize: 12 }}>
+        <div className="text-muted" style={{ marginTop: 8, fontSize: 12 }}>
           Using API base: {apiBase}
         </div>
       ) : (
-        <div style={{ marginTop: 8, color: 'var(--kavia-muted)', fontSize: 12 }}>
+        <div className="text-muted" style={{ marginTop: 8, fontSize: 12 }}>
           Running in client-only mode. Set REACT_APP_API_BASE to integrate a backend later.
         </div>
       )}
