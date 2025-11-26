@@ -3,7 +3,6 @@ import './App.css';
 import TopBar from './components/TopBar';
 import MessageList from './components/MessageList';
 import ChatInput from './components/ChatInput';
-import NotificationBanner from './components/NotificationBanner.jsx';
 import { ChatProvider, useChatActions, useChatState } from './state/chatStore';
 import { SettingsProvider } from './state/settingsStore';
 import { generateSiteFromPrompt, sanitizeGeneratedHtml } from './utils/generation';
@@ -15,7 +14,6 @@ function AppInner() {
   const { messages, isGenerating, error, theme } = useChatState();
   const { setMessages, setHtml, setGenerating, setError, setTheme, reset } = useChatActions();
   const [input, setInput] = useState('');
-  const [banner, setBanner] = useState({ visible: false, type: 'info', message: '' });
   const [lastPrompt, setLastPrompt] = useState('');
 
   // Ensure document theme attribute exists early
@@ -46,22 +44,22 @@ function AppInner() {
     await new Promise((r) => setTimeout(r, jitter));
   };
 
-  const showInfo = (message) => setBanner({ visible: true, type: 'info', message });
-  const showSuccess = (message) => setBanner({ visible: true, type: 'success', message });
-  const showError = (message) => setBanner({ visible: true, type: 'error', message });
-  const hideBanner = () => setBanner((b) => ({ ...b, visible: false }));
+  // Append an assistant message into chat stream
+  const appendAssistant = (content) => {
+    setMessages((prev) => [...prev, { role: 'assistant', content }]);
+  };
 
   const handleGenerate = async (nextPrompt) => {
     const err = validate(nextPrompt);
     if (err) {
       setError(err);
-      showError(err);
+      // Inline error in chat stream
+      appendAssistant(`⚠️ ${err} Please try again with a shorter prompt.`);
       return;
     }
     setError('');
     setGenerating(true);
     setLastPrompt(nextPrompt);
-    showInfo('Generating…');
 
     // Append user message
     const userMsg = { role: 'user', content: nextPrompt.trim() };
@@ -74,23 +72,19 @@ function AppInner() {
     try {
       if (useApi) {
         let finalHtml = '';
-        let appendedFinal = false;
-
         let codeBuf = '';
+
+        // Stream path
         await streamMessage(baseMessages, (delta) => {
           if (typeof delta?.payload === 'string' && delta?.type === 'code') {
             codeBuf += delta.payload;
           }
           if (delta?.done) {
+            // Update preview HTML when provided or build from code
             if (typeof delta.html === 'string' && delta.html) {
               finalHtml = delta.html;
-              if (process.env.NODE_ENV !== 'production') {
-                // eslint-disable-next-line no-console
-                console.debug('[App] setting currentHtml from stream, length=', delta.html.length);
-              }
               setHtml(delta.html);
             } else if (!finalHtml && codeBuf) {
-              // Build a simple safe preview container from code
               const safe = codeBuf.replace(/</g, '&lt;').replace(/>/g, '&gt;');
               const html = `
                 <div style="padding:16px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
@@ -103,23 +97,22 @@ function AppInner() {
               finalHtml = html;
               setHtml(html);
             }
+
             stopTyping();
-            if (!appendedFinal) {
-              setMessages((prev) => [
-                ...prev,
-                {
-                  role: 'assistant',
-                  content:
-                    typeof delta?.content === 'string' && delta.content
-                      ? delta.content
-                      : 'Preview updated.'
-                }
-              ]);
-              appendedFinal = true;
+
+            // Inline assistant message confirming result and optionally showing code block if Code view is expected
+            const confirmation = 'Preview generated. Use the Preview button to open the live view. You can refine with follow-up prompts.';
+            if (codeBuf && codeBuf.trim().length > 0) {
+              appendAssistant(`${confirmation}\n\n\`\`\`jsx\n${codeBuf}\n\`\`\``);
+            } else if (typeof delta?.content === 'string' && delta.content) {
+              appendAssistant(delta.content);
+            } else {
+              appendAssistant(confirmation);
             }
           }
         });
 
+        // Non-stream fallback via sendMessage if preview not set
         if (!finalHtml) {
           const result = await sendMessage(baseMessages);
           if (typeof result?.html === 'string') {
@@ -128,30 +121,18 @@ function AppInner() {
           if (Array.isArray(result?.messages)) {
             setMessages(result.messages);
           } else {
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: 'assistant',
-                content:
-                  'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
-              }
-            ]);
+            appendAssistant(
+              'Preview generated. Use the Preview button to open the live view. You can refine with follow-up prompts.'
+            );
           }
           if (result?.error) {
             setError(result.error);
-            showError(`Generation failed: ${result.error}`);
-          } else {
-            showSuccess('Generation complete');
+            appendAssistant(`⚠️ Generation failed: ${result.error}. Please try again.`);
           }
           stopTyping();
-        } else {
-          if (!finalHtml || finalHtml.trim().length === 0) {
-            showError('Generation failed: empty result');
-          } else {
-            showSuccess(`Generation complete (${finalHtml.length} chars)`);
-          }
         }
       } else {
+        // Local fallback path
         await simulateThinking(600, 1400);
 
         const html = generateSiteFromPrompt(nextPrompt.trim(), {});
@@ -160,18 +141,16 @@ function AppInner() {
 
         stopTyping();
 
-        const botAck = {
-          role: 'assistant',
-          content:
-            'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
-        };
-        setMessages([...baseMessages, botAck]);
-        showSuccess('Generation complete');
+        appendAssistant(
+          'Preview generated. Use the Preview button to open the live view. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
+        );
       }
     } catch (e) {
-      const msg = e?.message || 'Failed to generate preview. Please try again.';
+      const msg = e?.message || 'Failed to generate preview.';
       setError(msg);
-      showError(`Generation failed: ${msg}`);
+      stopTyping();
+      // Inline error in chat with suggestion
+      appendAssistant(`⚠️ Generation error: ${msg}. Please retry in a moment.`);
     } finally {
       setGenerating(false);
     }
@@ -194,23 +173,8 @@ function AppInner() {
     return [...messages, { role: 'assistant', content: indicatorText }];
   }, [messages, isTyping, indicatorText]);
 
-  const onRetry = () => {
-    hideBanner();
-    if (lastPrompt) {
-      handleGenerate(lastPrompt);
-    }
-  };
-
   return (
     <div className="App">
-      <NotificationBanner
-        visible={banner.visible}
-        type={banner.type}
-        message={banner.message}
-        onClose={hideBanner}
-        onRetry={banner.type === 'error' ? onRetry : undefined}
-        retryLabel="Retry"
-      />
       {/* Single-column chat layout (sidebar) */}
       <aside className="app-sidebar" aria-label="Chat panel">
         <div className="app-topbar">
