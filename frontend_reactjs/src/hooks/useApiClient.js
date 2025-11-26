@@ -58,7 +58,8 @@ export default function useApiClient() {
   async function localStreamMessage(messages, onDelta) {
     // Simulate a short "typing" stream then finalize with the same content as localSendMessage.
     const lastUser = [...(messages || [])].reverse().find((m) => m?.role === 'user');
-    const prompt = normalizeEnvString(lastUser?.content || '');
+    // normalize string without relying on removed helpers
+    const prompt = typeof lastUser?.content === 'string' ? lastUser.content.trim() : String(lastUser?.content || '').trim();
     const baseText = 'Thinking';
     let dots = 0;
 
