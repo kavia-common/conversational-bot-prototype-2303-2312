@@ -8,7 +8,8 @@
     "react-scripts": "^5.0.1"
   },
   "scripts": {
-    "start": "concurrently -n backend,frontend -c \"#6EE7B7,#60A5FA\" \"npm run start:backend\" \"npm run start:frontend\"",
+    "prestart": "node -e \"try{require('concurrently')}catch(e){process.exit(1)}\" || npm i -D concurrently",
+    "start": "npx concurrently -n backend,frontend -c \"#6EE7B7,#60A5FA\" \"npm run start:backend\" \"npm run start:frontend\"",
     "start:frontend": "cross-env PORT=${REACT_APP_PORT:-3000} react-scripts start",
     "start:backend": "cross-env PORT=8000 CORS_ORIGIN=http://localhost:3000 node ../backend/server.js",
     "build": "react-scripts build",

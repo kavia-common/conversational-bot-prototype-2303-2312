@@ -205,7 +205,7 @@ Sanitization:
 - **"API Down"** indicates the health check failed to fetch from API_BASE + HEALTHCHECK_PATH (default /healthz)
 - **If streaming fails**, the app automatically falls back to non-stream requests or local generation to preserve UX
 - **Backend dependencies missing**: If you see errors about express or cors not found, run `npm install` in the `../backend` directory
-- **'concurrently: not found' error**: If you encounter this error when running `npm start`, run `npm install` in the `frontend_reactjs` directory to install all required devDependencies including concurrently
+- **'concurrently: not found' error**: This is now automatically fixed - the prestart script will install concurrently if it's missing from node_modules
 
 ## Learn more
 
