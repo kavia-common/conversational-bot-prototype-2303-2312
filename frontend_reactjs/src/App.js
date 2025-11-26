@@ -76,7 +76,11 @@ function AppInner() {
         let finalHtml = '';
         let appendedFinal = false;
 
+        let codeBuf = '';
         await streamMessage(baseMessages, (delta) => {
+          if (typeof delta?.payload === 'string' && delta?.type === 'code') {
+            codeBuf += delta.payload;
+          }
           if (delta?.done) {
             if (typeof delta.html === 'string' && delta.html) {
               finalHtml = delta.html;
@@ -85,6 +89,19 @@ function AppInner() {
                 console.debug('[App] setting currentHtml from stream, length=', delta.html.length);
               }
               setHtml(delta.html);
+            } else if (!finalHtml && codeBuf) {
+              // Build a simple safe preview container from code
+              const safe = codeBuf.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              const html = `
+                <div style="padding:16px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <h2 style="margin:0;color:#2563EB;font-size:16px;">Preview (Code not executed)</h2>
+                  </div>
+                  <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-size:12px;background:#f9fafb;padding:12px;border-radius:6px;border:1px dashed #e5e7eb;">${safe}</pre>
+                </div>
+              `;
+              finalHtml = html;
+              setHtml(html);
             }
             stopTyping();
             if (!appendedFinal) {
@@ -128,7 +145,11 @@ function AppInner() {
           }
           stopTyping();
         } else {
-          showSuccess('Generation complete');
+          if (!finalHtml || finalHtml.trim().length === 0) {
+            showError('Generation failed: empty result');
+          } else {
+            showSuccess(`Generation complete (${finalHtml.length} chars)`);
+          }
         }
       } else {
         await simulateThinking(600, 1400);

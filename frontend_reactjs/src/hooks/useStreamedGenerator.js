@@ -45,6 +45,7 @@ export function useStreamedGenerator() {
 
       if (stream) {
         // Start streaming
+        let aggCode = '';
         const handle = streamGenerate(prompt, {
           onStatus: (msg) => {
             setStatus(typeof msg === 'string' && msg ? msg : 'Generating…');
@@ -55,11 +56,13 @@ export function useStreamedGenerator() {
               if (evt?.type === 'status') {
                 setStatus(String(evt.payload || ''));
               } else if (evt?.type === 'code') {
-                const next = String(evt.payload || '');
-                setCodeBuffer(next);
+                const piece = String(evt.payload || '');
+                // Append piece to buffer when backend sends incrementally
+                aggCode += piece;
+                setCodeBuffer(aggCode);
                 if (process.env.NODE_ENV !== 'production') {
                   // eslint-disable-next-line no-console
-                  console.debug('[useStreamedGenerator] code chunk length=', next.length);
+                  console.debug('[useStreamedGenerator] code chunk received length=', piece.length, 'agg=', aggCode.length);
                 }
               } else if (evt?.type === 'meta') {
                 setMeta(evt.payload || {});
@@ -70,8 +73,11 @@ export function useStreamedGenerator() {
                   console.debug('[useStreamedGenerator] final html received from stream, length=', evt.html.length);
                 }
                 setCurrentHtml(evt.html || '');
-                // If code not provided via code chunks, ensure codeBuffer not undefined
-                setCodeBuffer((prev) => prev || '');
+                setCodeBuffer((prev) => prev || aggCode || '');
+              } else if (evt?.done && typeof evt?.code === 'string' && !evt.html) {
+                // Done event with aggregated code but no html
+                aggCode = evt.code;
+                setCodeBuffer(aggCode);
               }
             } catch {
               // ignore malformed event
@@ -79,8 +85,33 @@ export function useStreamedGenerator() {
           },
           onDone: () => {
             setIsStreaming(false);
-            setStatus('Generation complete');
-            // Do not clear currentHtml here; keep whatever was set via stream finalizer
+            // If html wasn't provided, attempt to convert code to html by wrapping as safe preview container
+            if (!currentHtml && (codeBuffer || aggCode)) {
+              try {
+                const code = codeBuffer || aggCode || '';
+                const safe = (code || '')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;');
+                const html = `
+                  <div style="padding:16px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                      <h2 style="margin:0;color:#2563EB;font-size:16px;">Preview (Code not executed)</h2>
+                    </div>
+                    <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-size:12px;background:#f9fafb;padding:12px;border-radius:6px;border:1px dashed #e5e7eb;">${safe}</pre>
+                  </div>
+                `;
+                setCurrentHtml(html);
+                if (process.env.NODE_ENV !== 'production') {
+                  // eslint-disable-next-line no-console
+                  console.debug('[useStreamedGenerator] built preview html from code buffer length=', (code || '').length);
+                }
+                setStatus(`Generation complete (${(code || '').length} chars)`);
+              } catch {
+                setStatus('Generation complete');
+              }
+            } else {
+              setStatus(`Generation complete${codeBuffer ? ` (${(codeBuffer || '').length} chars)` : ''}`);
+            }
             abortRef.current = null;
           },
           onError: (err) => {
@@ -99,11 +130,24 @@ export function useStreamedGenerator() {
         setStatus('Generating…');
         generateOnce(prompt, { signal: controller.signal })
           .then(({ code, meta }) => {
-            setCodeBuffer(code || '');
+            const codeStr = code || '';
+            setCodeBuffer(codeStr);
             setMeta(meta || {});
-            // Non-stream endpoint in backend returns { code, meta } (not html), so currentHtml remains for consumer to build.
+            // convert to safe preview container for immediate display if consumer expects currentHtml
+            if (codeStr) {
+              const safe = codeStr.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              const html = `
+                <div style="padding:16px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <h2 style="margin:0;color:#2563EB;font-size:16px;">Preview (Code not executed)</h2>
+                  </div>
+                  <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-size:12px;background:#f9fafb;padding:12px;border-radius:6px;border:1px dashed #e5e7eb;">${safe}</pre>
+                </div>
+              `;
+              setCurrentHtml(html);
+            }
             setIsStreaming(false);
-            setStatus('Generation complete');
+            setStatus(codeStr ? `Generation complete (${codeStr.length} chars)` : 'Generation complete');
           })
           .catch((err) => {
             const isAborted = controller.signal.aborted;
@@ -117,7 +161,8 @@ export function useStreamedGenerator() {
           });
       }
     },
-    [reset]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reset, currentHtml, codeBuffer]
   );
 
   const cancel = useCallback(() => {

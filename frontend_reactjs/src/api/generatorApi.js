@@ -28,7 +28,7 @@ function safeReasonFromText(status, text) {
  * PUBLIC_INTERFACE
  * Call non-streaming generation endpoint.
  */
-import { useSettings } from '../state/settingsStore'; // not directly usable here; add helper to read localStorage
+
 
 function loadSettingsSnapshot() {
   try {
@@ -84,7 +84,23 @@ export async function generateOnce(prompt, { signal } = {}) {
     err.status = resp.status;
     throw err;
   }
-  return resp.json();
+  const data = await resp.json().catch(() => ({}));
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.debug('[generatorApi.generateOnce] raw response keys=', Object.keys(data || {}));
+  }
+  // Normalize to { code, meta }
+  if (typeof data?.code === 'string') {
+    return { code: data.code, meta: data.meta || {} };
+  }
+  if (typeof data?.html === 'string') {
+    // Some backends may return html instead of code; keep content in meta
+    return { code: data.html, meta: { content: data.content || '', ...(data.meta || {}) } };
+  }
+  if (typeof data?.content === 'string') {
+    return { code: data.content, meta: data.meta || {} };
+  }
+  return { code: '', meta: data?.meta || {} };
 }
 
 /**
@@ -139,6 +155,10 @@ export function streamGenerate(
 
     es.addEventListener('open', () => {
       onStatus?.('Generating…');
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.debug('[generatorApi.streamGenerate] SSE open');
+      }
     });
 
     es.addEventListener('chunk', (e) => {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { callBackendGenerate } from './services/generatorApi';
+import { generateOnce as callBackendGenerate } from './api/generatorApi';
 import { sanitizeHtml } from './utils/sanitize';
 
 /**
@@ -55,6 +55,14 @@ export default function App() {
       }
       if (!out) {
         out = localGenerate(p);
+      }
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.debug('[App.jsx] generation result', { hasCode: !!out?.code, meta: out?.meta });
+      }
+      if (!out?.code) {
+        // eslint-disable-next-line no-console
+        console.debug('[App.jsx] Empty result code; nothing to preview.');
       }
       setResult(out);
       setShowCode(false); // default to Preview on new result
