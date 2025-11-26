@@ -1,11 +1,52 @@
 import React from 'react';
+import { useChatState } from '../state/chatStore';
+import { copyHtmlToClipboard, downloadHtml, openPreviewInNewTab } from '../utils/exporters';
 
 /**
  * PUBLIC_INTERFACE
  * TopBar renders the chat header containing the app title, theme toggle, and reset button.
+ * Also exposes export actions (Copy HTML, Download HTML, Open in new tab) for the generated content.
  */
 export default function TopBar({ theme, onToggleTheme, onReset }) {
   /** This is a public function: top bar control section for the chat sidebar. */
+  const { currentHtml } = useChatState();
+  const hasHtml = typeof currentHtml === 'string' && currentHtml.trim().length > 0;
+
+  const handleCopy = async () => {
+    const ok = await copyHtmlToClipboard(currentHtml);
+    if (!ok && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[TopBar] Copy failed or empty HTML');
+    }
+  };
+
+  const handleDownload = () => {
+    const ok = downloadHtml(currentHtml, 'prototype.html');
+    if (!ok && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[TopBar] Download skipped or failed (empty HTML?)');
+    }
+  };
+
+  const handleOpenNewTab = () => {
+    const ok = openPreviewInNewTab(currentHtml);
+    if (!ok && process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[TopBar] Open in new tab blocked, failed, or empty HTML');
+    }
+  };
+
+  const commonBtn = {
+    padding: '8px 12px',
+    borderRadius: 10,
+    fontWeight: 700,
+    border: '1px solid var(--kavia-border)',
+    background: 'var(--kavia-surface)',
+    color: 'var(--kavia-text)',
+    cursor: hasHtml ? 'pointer' : 'not-allowed',
+    opacity: hasHtml ? 1 : 0.6
+  };
+
   return (
     <div
       style={{
@@ -31,7 +72,40 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
         />
         <strong>Proto Bot</strong>
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {/* Export actions - operate ONLY on generated HTML from store */}
+        <button
+          onClick={handleCopy}
+          aria-label="Copy HTML to clipboard"
+          style={commonBtn}
+          type="button"
+          disabled={!hasHtml}
+          title={hasHtml ? 'Copy generated HTML' : 'Nothing to copy yet'}
+        >
+          Copy HTML
+        </button>
+        <button
+          onClick={handleDownload}
+          aria-label="Download HTML"
+          style={commonBtn}
+          type="button"
+          disabled={!hasHtml}
+          title={hasHtml ? 'Download generated HTML' : 'Nothing to download yet'}
+        >
+          Download HTML
+        </button>
+        <button
+          onClick={handleOpenNewTab}
+          aria-label="Open preview in new tab"
+          style={commonBtn}
+          type="button"
+          disabled={!hasHtml}
+          title={hasHtml ? 'Open generated HTML in a new tab' : 'Nothing to open yet'}
+        >
+          Open in new tab
+        </button>
+
+        {/* Theme + Reset controls */}
         <button
           className="theme-toggle"
           onClick={onToggleTheme}
