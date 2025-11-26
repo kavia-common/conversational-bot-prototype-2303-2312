@@ -4,6 +4,7 @@ import Preview from './Preview';
 import TopBar from './components/TopBar';
 import MessageList from './components/MessageList';
 import ChatInput from './components/ChatInput';
+import { ChatProvider, useChatActions, useChatState } from './state/chatStore';
 
 /**
  * Ocean Professional theme colors and simple design tokens.
@@ -335,43 +336,20 @@ export function generateSiteFromPrompt(prompt, options = {}) {
   return html;
 }
 
-
-
-/**
- * PUBLIC_INTERFACE
- * Main App renders:
- * - Sidebar with chat
- * - Main canvas with preview iframe
- * - Theme toggle, Reset action, and optional API base placeholder
- */
-function App() {
-  /** This is a public function - main React component mounting the chatbot and preview UI. */
-  const [theme, setTheme] = useState('light');
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Describe the website you want to prototype. For example: "Create a dark SaaS landing page with pricing and contact."' }
-  ]);
+/** Local component which consumes the store and renders the UI. */
+function AppInner() {
+  const { messages, currentHtml, isGenerating, error, theme } = useChatState();
+  const { setMessages, setHtml, setGenerating, setError, setTheme, reset } = useChatActions();
   const [input, setInput] = useState('');
-  const [currentHtml, setCurrentHtml] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState('');
-
-  // Apply theme to document
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
 
   // Read API base from env; normalize to a string and avoid mixing ?? with logical operators
-  // Derive API base strictly without using nullish coalescing to satisfy ESLint
   const envApi = process.env.REACT_APP_API_BASE;
   const apiBase = typeof envApi === 'string' ? envApi : '';
-
-  // Placeholder for future API integration. Currently unused.
-  // Avoid useMemo altogether to prevent any incidental operator precedence issues in lint
   const useApi = (typeof apiBase === 'string' && apiBase.trim().length > 0);
 
   const previewSrcDoc = useIFrameSrcDoc(currentHtml);
 
-  const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
   // Validate input
   const validate = (text) => {
@@ -381,34 +359,21 @@ function App() {
   };
 
   const simulateThinking = async () => {
-    // Small delay to simulate processing and enable smooth transitions
     await new Promise((r) => setTimeout(r, 300));
   };
 
-  // Strip any nested iframe/script tags and hostile injections before storing the generated HTML.
-  // Preserve safe CSS and inline styles; do not inject any app UI elements.
+  // Strip unwanted tags/attrs
   const sanitizeGeneratedHtml = (html) => {
     if (!html || typeof html !== 'string') return '';
     let out = html;
-
-    // Remove scripts and iframes
     out = out.replace(/<script[\s\S]*?<\/script>/gi, '');
     out = out.replace(/<script[^>]*\/>/gi, '');
     out = out.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
     out = out.replace(/<iframe[^>]*\/>/gi, '');
-
-    // Remove inline event handlers
     out = out.replace(/\son\w+="[^"]*"/gi, '').replace(/\son\w+='[^']*'/gi, '');
-
-    // Prevent confusion with host root id
     out = out.replace(/id\s*=\s*["']root["']/gi, 'id="preview-root"');
-
-    // Remove external resource links that could inject app UI or toolbars
     out = out.replace(/<link[^>]+rel=["']?(?:preload|modulepreload|stylesheet|prefetch|preconnect)["']?[^>]*>/gi, '');
-
-    // Heuristic: strip toolbars/placeholders markers
     out = out.replace(/<[^>]+(?:data-app-ui|data-preview-toolbar|class=["'][^"']*(?:app-toolbar|preview-toolbar|app-placeholder)[^"']*["'])[^>]*>[\s\S]*?<\/[^>]+>/gi, '');
-
     return out.trim();
   };
 
@@ -419,31 +384,33 @@ function App() {
       return;
     }
     setError('');
-    setIsGenerating(true);
+    setGenerating(true);
+
+    // Append user message
     const userMsg = { role: 'user', content: nextPrompt.trim() };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages([...messages, userMsg]);
 
     try {
       await simulateThinking();
-
-      // Client-side generation for now; API placeholder reserved.
       const html = generateSiteFromPrompt(nextPrompt.trim(), {});
       const sanitized = sanitizeGeneratedHtml(html);
       if (process.env.NODE_ENV !== 'production') {
         // eslint-disable-next-line no-console
         console.debug('[App] Setting preview HTML. length=', sanitized?.length || 0);
       }
-      setCurrentHtml(sanitized);
+      setHtml(sanitized);
 
       const botAck = {
         role: 'assistant',
-        content: 'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
+        content:
+          'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
       };
-      setMessages((prev) => [...prev, botAck]);
+      // Append bot acknowledgement
+      setMessages([...messages, userMsg, botAck]);
     } catch (e) {
       setError('Failed to generate preview. Please try again.');
     } finally {
-      setIsGenerating(false);
+      setGenerating(false);
     }
   };
 
@@ -455,13 +422,10 @@ function App() {
   };
 
   const handleReset = () => {
-    setMessages([{ role: 'assistant', content: 'Describe the website you want to prototype. For example: "Create a dark SaaS landing page with pricing and contact."' }]);
-    setCurrentHtml('');
-    setError('');
+    reset();
   };
 
   // Note: We do not hide the preview just because we are in any iframe.
-  // The Preview component contains a relaxed guard to only hide when explicitly hosted.
   const isInIframe = typeof window !== 'undefined' && window.top !== window.self;
 
   return (
@@ -555,6 +519,19 @@ function App() {
         </div>
       </main>
     </div>
+  );
+}
+
+/**
+ * PUBLIC_INTERFACE
+ * Main App provider wrapper.
+ */
+function App() {
+  /** This is a public function - wraps the app with the ChatProvider. */
+  return (
+    <ChatProvider>
+      <AppInner />
+    </ChatProvider>
   );
 }
 
