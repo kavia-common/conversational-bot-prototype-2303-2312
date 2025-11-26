@@ -230,7 +230,7 @@ function AppInner() {
           </div>
           {/* Remove verbose helper text to avoid any leftover header/spacing within preview area */}
           <div className="text-muted" aria-live="polite" style={{ fontSize: 13 }}>
-            Updates with each prompt
+            {/* Keep concise to avoid clutter near preview */}
           </div>
         </div>
 

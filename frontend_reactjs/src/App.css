@@ -34,7 +34,8 @@
   --ease: 0.2s ease;
 }
 
-[data-theme="dark"] {
+/* Dark theme derived via [data-theme="dark"] on html element */
+html[data-theme="dark"] {
   --kavia-bg: #0b1220;
   --kavia-surface: #0e1628;
   --kavia-text: #e5e7eb;
@@ -45,7 +46,7 @@
   --shadow-lg: 0 12px 28px rgba(0,0,0,0.5);
 }
 
-/* Root app grid */
+/* Root app grid: two columns, sidebar + preview */
 .App {
   background: var(--kavia-bg);
   color: var(--kavia-text);
@@ -78,7 +79,7 @@
 
 /* Message list container (scrollable) */
 .app-messages {
-  padding: 16px;
+  padding: 0 16px 16px 16px; /* avoid double padding with message component */
   overflow-y: auto;
   flex: 1;
 }
@@ -86,7 +87,7 @@
 /* Chat message bubbles */
 .msg {
   display: flex;
-  margin-bottom: 10px;
+  margin: 10px 0;
 }
 .msg.user { justify-content: flex-end; }
 .msg.assistant { justify-content: flex-start; }
@@ -98,6 +99,7 @@
   border: 1px solid var(--kavia-border);
   background: var(--kavia-surface);
   color: var(--kavia-text);
+  white-space: pre-wrap; /* preserve line breaks from content */
 }
 .msg.user .msg-bubble {
   background: linear-gradient(180deg, var(--kavia-primary), #1e4fbf);
@@ -158,6 +160,8 @@
   background: var(--kavia-surface);
   color: var(--kavia-text);
 }
+
+/* Theme toggle button (TopBar) */
 .theme-toggle {
   background: var(--kavia-primary);
   color: #fff;
@@ -177,19 +181,6 @@
 }
 .theme-toggle:active { transform: translateY(0); }
 
-/* Accessible focus styles */
-:focus-visible {
-  outline: 2px solid var(--kavia-ring);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible {
-  box-shadow: 0 0 0 3px var(--kavia-ring);
-}
-
 /* Main preview area */
 .app-main {
   min-height: 100vh;
@@ -202,7 +193,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--kavia-border);
   background: var(--kavia-surface);
 }
@@ -238,5 +229,5 @@ textarea:focus-visible {
   .preview-header { min-height: var(--topbar-h); }
 }
 
-/* Ensure no leftover preview inner headers/spacing in iframe content:
-   We only style our container around the iframe. The iframe content itself is generated. */
+/* Ensure preview shows ONLY generated content inside iframe.
+   We style only the container around the iframe; the iframe content itself is generated. */

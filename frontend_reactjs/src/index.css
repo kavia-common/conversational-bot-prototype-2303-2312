@@ -1,13 +1,14 @@
 /* Base resets and typography + theme bridge */
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; }
+html, body, #root { height: 100%; margin: 0; padding: 0; }
 
+/* Theme bridge via [data-theme] set on <html> by chatStore */
 html {
-  /* Bridge to App.css variables; data-theme is set on <html> */
   background: var(--kavia-bg, #f9fafb);
   color: var(--kavia-text, #111827);
 }
 
+/* Improve default body typography and background in sync with App.css */
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -17,6 +18,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--kavia-bg, #f9fafb);
   color: var(--kavia-text, #111827);
+  line-height: 1.4;
 }
 
 /* Improve text selection for theme */
@@ -30,7 +32,20 @@ code {
     monospace;
 }
 
-/* Provide smooth transitions for theme changes */
+/* Smooth transitions for theme changes */
 html, body, #root {
   transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Accessible focus ring defaults that complement component-level styles */
+:focus-visible {
+  outline: 2px solid var(--kavia-ring, rgba(37, 99, 235, 0.35));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 3px var(--kavia-ring, rgba(37, 99, 235, 0.35));
 }

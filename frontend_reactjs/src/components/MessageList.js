@@ -35,7 +35,7 @@ export default function MessageList({ messages, isGenerating }) {
   return (
     <div
       style={{
-        padding: 16,
+        padding: 0,
         overflowY: 'auto',
         flex: 1
       }}

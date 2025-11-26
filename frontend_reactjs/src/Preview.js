@@ -81,7 +81,7 @@ export default function Preview({ html, height = 'calc(100vh - 64px - 32px)' }) 
           title="Prototype Preview"
           // Strict sandbox; allow-scripts enables basic inline JS in generated pages if present.
           sandbox="allow-same-origin allow-forms allow-scripts"
-          style={{ width: '100%', height: '100%', border: 'none' }}
+          style={{ width: '100%', height: '100%', border: 'none', background: 'transparent', display: 'block' }}
           srcDoc={sanitizedHtml}
         />
       )}
