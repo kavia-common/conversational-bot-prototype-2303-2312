@@ -1,21 +1,20 @@
 import React from 'react';
 import { useChatState } from '../state/chatStore';
-import { copyHtmlToClipboard, downloadHtml, openPreviewInNewTab } from '../utils/exporters';
+import { copyHtmlToClipboard, downloadHtml } from '../utils/exporters';
 
 /**
  * PUBLIC_INTERFACE
  * TopBar renders the chat header containing the app title, theme toggle, and reset button.
- * Also exposes export actions (Copy HTML, Download HTML, Open in new tab) for the generated content.
+ * Also exposes export actions (Copy HTML, Download HTML) and a dedicated Preview button to open the /#/preview route.
  */
 export default function TopBar({ theme, onToggleTheme, onReset }) {
   /** This is a public function: top bar control section for the chat sidebar. */
-  // Add a defensive guard: during isolated tests or edge mounting cases, ensure we don’t crash if context is not mounted yet.
+  // Defensive guard if context not mounted yet
   let currentHtml = '';
   try {
     const state = useChatState();
     currentHtml = typeof state?.currentHtml === 'string' ? state.currentHtml : '';
   } catch {
-    // If context is unavailable, default to empty HTML which simply disables export actions.
     currentHtml = '';
   }
   const hasHtml = currentHtml.trim().length > 0;
@@ -36,12 +35,12 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
     }
   };
 
-  const handleOpenNewTab = () => {
-    const ok = openPreviewInNewTab(currentHtml);
-    if (!ok && process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.debug('[TopBar] Open in new tab blocked, failed, or empty HTML');
-    }
+  // Navigate to dedicated preview route. Uses hash route (#/preview) to avoid dependency on react-router.
+  const handleOpenPreviewRoute = () => {
+    if (!hasHtml) return;
+    // Open in a new tab
+    const url = `${window.location.origin}${window.location.pathname}#/preview`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const commonBtn = {
@@ -103,14 +102,14 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
           Download HTML
         </button>
         <button
-          onClick={handleOpenNewTab}
-          aria-label="Open preview in new tab"
+          onClick={handleOpenPreviewRoute}
+          aria-label="Open Preview"
           style={commonBtn}
           type="button"
           disabled={!hasHtml}
-          title={hasHtml ? 'Open generated HTML in a new tab' : 'Nothing to open yet'}
+          title={hasHtml ? 'Open dedicated preview page' : 'No preview available yet'}
         >
-          Open in new tab
+          Preview
         </button>
 
         {/* Theme + Reset controls */}

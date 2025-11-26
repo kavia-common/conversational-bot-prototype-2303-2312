@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from './App';
 
 // Helper to get preview iframe (when content exists) or empty-state status element
@@ -25,7 +25,8 @@ describe('App integration', () => {
     // Export buttons exist but disabled initially
     expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Download HTML/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Open preview in new tab/i })).toBeDisabled();
+    // New Preview button should be present and disabled initially
+    expect(screen.getByRole('button', { name: /Open Preview/i })).toBeDisabled();
   });
 
   test('submitting a prompt shows assistant response and replaces preview empty-state with generated content', async () => {
@@ -37,8 +38,6 @@ describe('App integration', () => {
     fireEvent.change(input, { target: { value: 'Create a dark SaaS landing with contact' } });
     fireEvent.click(send);
 
-    // Assistant "typing"/"thinking" message shows transiently (could be "Thinking..." or animated indicator)
-    // We assert eventual assistant acknowledgement message from generator.
     await waitFor(
       () =>
         expect(
@@ -59,7 +58,8 @@ describe('App integration', () => {
     // Export action buttons should now be enabled as content exists
     expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Download HTML/i })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /Open preview in new tab/i })).toBeEnabled();
+    // Preview button enabled
+    expect(screen.getByRole('button', { name: /Open Preview/i })).toBeEnabled();
   });
 
   test('reset clears messages back to welcome and clears preview', async () => {
@@ -105,7 +105,7 @@ describe('App integration', () => {
     // Export actions disabled again
     expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Download HTML/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Open preview in new tab/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Open Preview/i })).toBeDisabled();
   });
 
   test('export buttons exist and are enabled when content exists', async () => {
@@ -114,10 +114,10 @@ describe('App integration', () => {
     // Initially present but disabled
     const copyBtn = screen.getByRole('button', { name: /Copy HTML to clipboard/i });
     const downloadBtn = screen.getByRole('button', { name: /Download HTML/i });
-    const openBtn = screen.getByRole('button', { name: /Open preview in new tab/i });
+    const previewBtn = screen.getByRole('button', { name: /Open Preview/i });
     expect(copyBtn).toBeDisabled();
     expect(downloadBtn).toBeDisabled();
-    expect(openBtn).toBeDisabled();
+    expect(previewBtn).toBeDisabled();
 
     // Generate content
     const input = screen.getByLabelText(/Enter your prompt/i);
@@ -141,6 +141,6 @@ describe('App integration', () => {
     // Buttons enabled now
     expect(copyBtn).toBeEnabled();
     expect(downloadBtn).toBeEnabled();
-    expect(openBtn).toBeEnabled();
+    expect(previewBtn).toBeEnabled();
   });
 });
