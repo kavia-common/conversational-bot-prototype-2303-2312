@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useChatState } from '../state/chatStore';
 import { useSettings } from '../state/settingsStore';
 import SettingsPanel from './SettingsPanel.jsx';
+import env from '../utils/env';
 
 /**
  * PUBLIC_INTERFACE
@@ -63,6 +64,35 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
   const modelLabel = settings?.model || '(model?)';
   const openaiBase = (settings?.provider === 'openai' && typeof settings?.openaiBaseUrl === 'string' && settings.openaiBaseUrl) ? settings.openaiBaseUrl.trim() : '';
   const truncatedBase = openaiBase ? (openaiBase.length > 28 ? `${openaiBase.slice(0, 25)}…` : openaiBase) : '';
+
+  // Lightweight backend connectivity indicator
+  const { API_BASE, HEALTHCHECK_PATH } = env();
+  const [health, setHealth] = useState({ status: 'idle', timestamp: 0 });
+
+  useEffect(() => {
+    let mounted = true;
+    const check = async () => {
+      if (!API_BASE) {
+        if (mounted) setHealth({ status: 'off', timestamp: Date.now() });
+        return;
+      }
+      try {
+        const url = `${API_BASE}${HEALTHCHECK_PATH || '/health'}`;
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 2500);
+        const resp = await fetch(url, { signal: ctrl.signal }).catch(() => null);
+        clearTimeout(t);
+        const ok = !!resp && resp.ok;
+        if (mounted) setHealth({ status: ok ? 'ok' : 'down', timestamp: Date.now() });
+      } catch {
+        if (mounted) setHealth({ status: 'down', timestamp: Date.now() });
+      }
+    };
+    // Initial check and periodic non-blocking checks
+    check();
+    const id = setInterval(check, 15000);
+    return () => { mounted = false; clearInterval(id); };
+  }, [API_BASE, HEALTHCHECK_PATH]);
 
   return (
     <div
@@ -127,8 +157,31 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
               : 'No preview available yet'
           }
         >
-          Preview
+          Open Preview
         </button>
+        <span
+          className="text-muted"
+          style={{ fontSize: 12, marginLeft: 4, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          title={API_BASE ? `Backend: ${API_BASE}` : 'No backend configured'}
+        >
+          {API_BASE ? (
+            <>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background:
+                    health.status === 'ok' ? '#16a34a' :
+                    health.status === 'down' ? '#ef4444' :
+                    '#9ca3af'
+                }}
+              />
+              <span>{health.status === 'ok' ? 'API OK' : health.status === 'down' ? 'API Down' : 'API Idle'}</span>
+            </>
+          ) : (
+            'Client-only'
+          )}
+        </span>
 
         {/* Theme + Reset controls */}
         <button

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App'; // Main chat layout + provider
 import PreviewPage from './PreviewPage';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 // Lightweight hash router to avoid adding dependencies.
 // Supports: "#/preview" => PreviewPage, default => App
@@ -35,6 +36,8 @@ function Router() {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <Router />
+    <ErrorBoundary>
+      <Router />
+    </ErrorBoundary>
   </React.StrictMode>
 );

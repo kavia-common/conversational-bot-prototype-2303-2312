@@ -8,6 +8,7 @@ import { SettingsProvider } from './state/settingsStore';
 import { generateSiteFromPrompt, sanitizeGeneratedHtml } from './utils/generation';
 import useTypingIndicator from './hooks/useTypingIndicator';
 import useApiClient from './hooks/useApiClient';
+import FeatureFlagGate from './components/FeatureFlagGate.jsx';
 
 /** Local component which consumes the store and renders the UI (chat-only layout). */
 function AppInner() {
@@ -182,6 +183,21 @@ function AppInner() {
         </div>
         <div className="app-messages" aria-label="Chat history">
           <MessageList messages={renderedMessages} isGenerating={isGenerating && !isTyping} />
+          <FeatureFlagGate flag="demoPanel">
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                border: '1px dashed var(--kavia-border)',
+                borderRadius: 10,
+                background: 'var(--kavia-surface)',
+                color: 'var(--kavia-muted)',
+                fontSize: 12
+              }}
+            >
+              Demo panel is enabled via feature flag (REACT_APP_FEATURE_FLAGS).
+            </div>
+          </FeatureFlagGate>
         </div>
         <div className="app-chat-form">
           <ChatInput

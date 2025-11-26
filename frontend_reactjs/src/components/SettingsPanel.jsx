@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useSettings, useSettingsActions } from '../state/settingsStore';
 import { useChatState } from '../state/chatStore';
+import env from '../utils/env';
 
 /**
  * PUBLIC_INTERFACE
@@ -16,7 +17,8 @@ export default function SettingsPanel({ onClose }) {
   const [testStatus, setTestStatus] = useState('');
   const [testing, setTesting] = useState(false);
 
-  const apiBase = (process.env.REACT_APP_API_BASE || process.env.REACT_APP_BACKEND_URL || '').trim();
+  const { API_BASE } = env();
+  const apiBase = (API_BASE || '').trim();
 
   const isOpenAI = settings.provider === 'openai';
   const isOllama = settings.provider === 'ollama';

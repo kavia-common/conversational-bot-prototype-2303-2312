@@ -23,7 +23,8 @@ body {
 
 /* Improve text selection for theme */
 ::selection {
-  background: rgba(37,99,235,0.18);
+  background: rgba(37,99,235,0.28);
+  color: #ffffff;
 }
 
 /* Code font */

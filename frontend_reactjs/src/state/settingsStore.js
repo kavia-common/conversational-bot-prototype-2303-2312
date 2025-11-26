@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
+import env from '../utils/env';
 
 const LS_KEY = 'proto-bot-llm-settings-v1';
 
@@ -20,7 +21,15 @@ function loadSettings() {
   if (typeof window === 'undefined') return { ...defaultSettings };
   try {
     const raw = window.localStorage.getItem(LS_KEY);
-    if (!raw) return { ...defaultSettings };
+    if (!raw) {
+      const { OLLAMA_BASE_URL, OLLAMA_MODEL } = env();
+      return {
+        ...defaultSettings,
+        provider: 'ollama',
+        ollamaBaseUrl: OLLAMA_BASE_URL || defaultSettings.ollamaBaseUrl,
+        model: OLLAMA_MODEL || defaultSettings.model
+      };
+    }
     const data = JSON.parse(raw);
     const out = {
       provider: data?.provider === 'openai' ? 'openai' : 'ollama',

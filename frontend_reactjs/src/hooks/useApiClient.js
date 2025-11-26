@@ -15,20 +15,12 @@
 //
 import { useMemo } from 'react';
 import { generateSiteFromPrompt, sanitizeGeneratedHtml } from '../utils/generation';
-
-// Basic utility to normalize env string
-function normalizeEnvString(v) {
-  return typeof v === 'string' ? v.trim() : '';
-}
+import env from '../utils/env';
 
 // PUBLIC_INTERFACE
 export default function useApiClient() {
   /** This is a public function: returns API client helpers and env flags for integration. */
-  const apiBaseRaw = process.env.REACT_APP_API_BASE;
-  const wsUrlRaw = process.env.REACT_APP_WS_URL;
-
-  const apiBase = normalizeEnvString(apiBaseRaw);
-  const wsUrl = normalizeEnvString(wsUrlRaw);
+  const { API_BASE: apiBase, WS_URL: wsUrl } = env();
 
   // Decide if API is configured
   const useApi = apiBase.length > 0;
@@ -37,7 +29,7 @@ export default function useApiClient() {
   async function localSendMessage(messages) {
     // messages is an array of {role, content}. We will look at the latest user message.
     const lastUser = [...(messages || [])].reverse().find((m) => m?.role === 'user');
-    const prompt = normalizeEnvString(lastUser?.content || '');
+    const prompt = typeof lastUser?.content === 'string' ? lastUser.content.trim() : '';
     if (!prompt) {
       return {
         messages: messages || [],

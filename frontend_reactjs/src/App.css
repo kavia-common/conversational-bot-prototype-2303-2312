@@ -38,12 +38,12 @@
 html[data-theme="dark"] {
   --kavia-bg: #0b1220;
   --kavia-surface: #0e1628;
-  --kavia-text: #e5e7eb;
-  --kavia-muted: #94a3b8;
-  --kavia-border: rgba(148, 163, 184, 0.24);
-  --shadow-sm: 0 6px 16px rgba(0,0,0,0.35);
-  --shadow-md: 0 10px 30px rgba(0,0,0,0.45);
-  --shadow-lg: 0 12px 28px rgba(0,0,0,0.5);
+  --kavia-text: #f3f4f6; /* slightly higher contrast */
+  --kavia-muted: #cbd5e1; /* brighten muted for readability */
+  --kavia-border: rgba(203, 213, 225, 0.28);
+  --shadow-sm: 0 6px 16px rgba(0,0,0,0.45);
+  --shadow-md: 0 10px 30px rgba(0,0,0,0.55);
+  --shadow-lg: 0 12px 28px rgba(0,0,0,0.6);
 }
 
 /* Root app layout: single-column (chat sidebar occupies full width) */

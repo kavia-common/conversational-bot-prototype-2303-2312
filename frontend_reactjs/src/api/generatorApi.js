@@ -1,10 +1,8 @@
+import env from '../utils/env';
 //
 // Generator API utilities for non-streaming and streaming code generation.
 //
-const API_BASE =
-  process.env.REACT_APP_API_BASE ||
-  process.env.REACT_APP_BACKEND_URL ||
-  '';
+const { API_BASE } = env();
 
 if (process.env.NODE_ENV !== 'production') {
   // eslint-disable-next-line no-console
