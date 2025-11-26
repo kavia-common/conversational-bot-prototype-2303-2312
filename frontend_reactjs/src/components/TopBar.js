@@ -9,8 +9,16 @@ import { copyHtmlToClipboard, downloadHtml, openPreviewInNewTab } from '../utils
  */
 export default function TopBar({ theme, onToggleTheme, onReset }) {
   /** This is a public function: top bar control section for the chat sidebar. */
-  const { currentHtml } = useChatState();
-  const hasHtml = typeof currentHtml === 'string' && currentHtml.trim().length > 0;
+  // Add a defensive guard: during isolated tests or edge mounting cases, ensure we don’t crash if context is not mounted yet.
+  let currentHtml = '';
+  try {
+    const state = useChatState();
+    currentHtml = typeof state?.currentHtml === 'string' ? state.currentHtml : '';
+  } catch {
+    // If context is unavailable, default to empty HTML which simply disables export actions.
+    currentHtml = '';
+  }
+  const hasHtml = currentHtml.trim().length > 0;
 
   const handleCopy = async () => {
     const ok = await copyHtmlToClipboard(currentHtml);

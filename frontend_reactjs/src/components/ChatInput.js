@@ -21,7 +21,7 @@ export default function ChatInput({
 }) {
   /** Public function: chat input form with submit and status messaging. */
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={(e) => (typeof onSubmit === 'function' ? onSubmit(e) : e.preventDefault())}>
       <label htmlFor="prompt" style={{ display: 'none' }}>
         Prompt
       </label>

@@ -25,12 +25,18 @@ function ChatMessage({ role, content }) {
 export default function MessageList({ messages, isGenerating }) {
   /** Public function: renders chat messages. */
   const chatEndRef = useRef(null);
+  const safeMessages = Array.isArray(messages) ? messages : [];
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isGenerating]);
+  }, [safeMessages, isGenerating]);
 
-  const hasAssistantTyping = messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && typeof messages[messages.length - 1]?.content === 'string' && /typing|thinking/i.test(messages[messages.length - 1].content);
+  const last = safeMessages.length > 0 ? safeMessages[safeMessages.length - 1] : null;
+  const hasAssistantTyping =
+    !!last &&
+    last?.role === 'assistant' &&
+    typeof last?.content === 'string' &&
+    /typing|thinking/i.test(last.content);
 
   return (
     <div
@@ -41,8 +47,8 @@ export default function MessageList({ messages, isGenerating }) {
       }}
       aria-label="Chat history"
     >
-      {messages.map((m, idx) => (
-        <ChatMessage key={idx} role={m.role} content={m.content} />
+      {safeMessages.map((m, idx) => (
+        <ChatMessage key={idx} role={m?.role} content={m?.content} />
       ))}
       {/* Fallback "Thinking..." only if generating and no explicit typing message is present */}
       {isGenerating && !hasAssistantTyping && <ChatMessage role="assistant" content="Thinking..." />}

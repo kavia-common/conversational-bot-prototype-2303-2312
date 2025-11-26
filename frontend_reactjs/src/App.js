@@ -42,6 +42,13 @@ function AppInner() {
   const { messages, currentHtml, isGenerating, error, theme } = useChatState();
   const { setMessages, setHtml, setGenerating, setError, setTheme, reset } = useChatActions();
   const [input, setInput] = useState('');
+  // Ensure document theme attribute exists early
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const t = theme === 'dark' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    }
+  }, [theme]);
 
   // Typing indicator for assistant streaming UX
   const { isTyping, indicatorText, startTyping, stopTyping } = useTypingIndicator();
