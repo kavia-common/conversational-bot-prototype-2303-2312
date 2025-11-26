@@ -5,6 +5,7 @@ import MessageList from './components/MessageList';
 import ChatInput from './components/ChatInput';
 import NotificationBanner from './components/NotificationBanner.jsx';
 import { ChatProvider, useChatActions, useChatState } from './state/chatStore';
+import { SettingsProvider } from './state/settingsStore';
 import { generateSiteFromPrompt, sanitizeGeneratedHtml } from './utils/generation';
 import useTypingIndicator from './hooks/useTypingIndicator';
 import useApiClient from './hooks/useApiClient';
@@ -223,9 +224,11 @@ function AppInner() {
 function App() {
   /** This is a public function - wraps the app with the ChatProvider. */
   return (
-    <ChatProvider>
-      <AppInner />
-    </ChatProvider>
+    <SettingsProvider>
+      <ChatProvider>
+        <AppInner />
+      </ChatProvider>
+    </SettingsProvider>
   );
 }
 

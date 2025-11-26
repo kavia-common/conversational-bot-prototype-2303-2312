@@ -106,17 +106,30 @@ export default function useApiClient() {
   }
 
   // Placeholder API implementations: safe to call even if backend does not fully exist yet
-  async function apiSendMessage(messages) {
-    // Example POST to /chat/complete; the exact shape can be adapted when backend is available.
+  function readSettings() {
     try {
-      const res = await fetch(`${apiBase}/chat/complete`, {
+      const raw = window.localStorage.getItem('proto-bot-llm-settings-v1');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  async function apiSendMessage(messages) {
+    try {
+      const s = readSettings();
+      const provider = s?.provider === 'openai' ? 'openai' : 'ollama';
+      const model = typeof s?.model === 'string' ? s.model : undefined;
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (provider === 'openai' && s?.openaiApiKey) headers['X-OpenAI-Key'] = s.openaiApiKey;
+      if (provider === 'ollama' && s?.ollamaBaseUrl) headers['X-Ollama-Base'] = s.ollamaBaseUrl;
+
+      const res = await fetch(`${apiBase}/api/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages })
+        headers,
+        body: JSON.stringify({ prompt: (messages || []).filter(m=>m?.role==='user').slice(-1)[0]?.content || '', provider, model })
       });
 
       if (!res.ok) {
-        // Fallback to local if server error
         if (process.env.NODE_ENV !== 'production') {
           // eslint-disable-next-line no-console
           console.debug('[useApiClient] API sendMessage non-OK, falling back to local. Status:', res.status);
@@ -125,19 +138,12 @@ export default function useApiClient() {
       }
 
       const data = await res.json().catch(() => ({}));
-      // Expected shape:
-      // {
-      //   messages: [..., {role:'assistant', content:'...'}],
-      //   html: '<!doctype ...>',
-      //   error: ''
-      // }
       const nextMessages = Array.isArray(data?.messages) ? data.messages : messages || [];
       const html = typeof data?.html === 'string' ? data.html : '';
       const error = typeof data?.error === 'string' ? data.error : '';
 
       return { messages: nextMessages, html, error };
     } catch (e) {
-      // Network/other failure -> fallback to local
       if (process.env.NODE_ENV !== 'production') {
         // eslint-disable-next-line no-console
         console.debug('[useApiClient] API sendMessage error, falling back to local.', e);
@@ -147,7 +153,7 @@ export default function useApiClient() {
   }
 
   async function apiStreamMessage(messages, onDelta) {
-    // Attempt a WebSocket stream if wsUrl configured, else fallback to simple fetch or local
+    // Attempt a WebSocket stream if wsUrl configured, else fallback to HTTP POST /api/generate with SSE accept
     if (wsUrl) {
       try {
         await new Promise((resolve, reject) => {
@@ -203,12 +209,28 @@ export default function useApiClient() {
       }
     }
 
-    // Fallback: try fetch to a streaming-ish endpoint that returns the final output
+    // Fallback: use backend /api/generate with Accept: text/event-stream
     try {
-      const res = await fetch(`${apiBase}/chat/stream`, {
+      const s = (function () {
+        try {
+          const raw = window.localStorage.getItem('proto-bot-llm-settings-v1');
+          return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+      })();
+      const provider = s?.provider === 'openai' ? 'openai' : 'ollama';
+      const model = typeof s?.model === 'string' ? s.model : undefined;
+      const headers = { Accept: 'text/event-stream', 'Content-Type': 'application/json' };
+      if (provider === 'openai' && s?.openaiApiKey) headers['X-OpenAI-Key'] = s.openaiApiKey;
+      if (provider === 'ollama' && s?.ollamaBaseUrl) headers['X-Ollama-Base'] = s.ollamaBaseUrl;
+
+      const res = await fetch(`${apiBase}/api/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages })
+        headers,
+        body: JSON.stringify({
+          prompt: (messages || []).filter(m=>m?.role==='user').slice(-1)[0]?.content || '',
+          provider,
+          model
+        })
       });
 
       if (res.ok) {
@@ -217,9 +239,9 @@ export default function useApiClient() {
           const finalMsg = {
             role: 'assistant',
             content:
-              typeof data?.message === 'string'
-                ? data.message
-                : 'Preview updated from API stream.',
+              typeof data?.content === 'string'
+                ? data.content
+                : 'Preview updated.',
             done: true,
             html: typeof data?.html === 'string' ? data.html : ''
           };
@@ -227,10 +249,8 @@ export default function useApiClient() {
         }
         return { error: '' };
       }
-      // If not OK, fallback to local
       return localStreamMessage(messages, onDelta);
     } catch {
-      // Network error -> fallback to local
       return localStreamMessage(messages, onDelta);
     }
   }

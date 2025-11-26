@@ -28,21 +28,46 @@ function safeReasonFromText(status, text) {
  * PUBLIC_INTERFACE
  * Call non-streaming generation endpoint.
  */
+import { useSettings } from '../state/settingsStore'; // not directly usable here; add helper to read localStorage
+
+function loadSettingsSnapshot() {
+  try {
+    const raw = window.localStorage.getItem('proto-bot-llm-settings-v1');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export async function generateOnce(prompt, { signal } = {}) {
   const url = `${API_BASE}/api/generate`;
+  const s = loadSettingsSnapshot();
+  const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  const body = {
+    prompt,
+    provider: s?.provider === 'openai' ? 'openai' : 'ollama',
+    model: typeof s?.model === 'string' ? s.model : undefined
+  };
+  if (s?.provider === 'openai' && typeof s?.openaiApiKey === 'string' && s.openaiApiKey) {
+    headers['X-OpenAI-Key'] = s.openaiApiKey;
+  }
+  if (s?.provider === 'ollama' && typeof s?.ollamaBaseUrl === 'string' && s.ollamaBaseUrl) {
+    headers['X-Ollama-Base'] = s.ollamaBaseUrl;
+  }
+
   let resp;
   try {
     resp = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ prompt }),
+      headers,
+      body: JSON.stringify(body),
       signal
     });
   } catch (e) {
     throw new Error('Network error');
   }
   if (!resp.ok) {
-    // Try to parse JSON error { error: "..." }
     let msg = '';
     try {
       const j = await resp.json();
@@ -165,13 +190,33 @@ export function streamGenerate(
   const url = `${API_BASE}/api/generate`;
   (async () => {
     try {
+      const s = (function () {
+        try {
+          const raw = window.localStorage.getItem('proto-bot-llm-settings-v1');
+          return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+      })();
+
+      const headers = {
+        Accept: 'text/event-stream',
+        'Content-Type': 'application/json'
+      };
+      const body = {
+        prompt,
+        provider: s?.provider === 'openai' ? 'openai' : 'ollama',
+        model: typeof s?.model === 'string' ? s.model : undefined
+      };
+      if (s?.provider === 'openai' && typeof s?.openaiApiKey === 'string' && s.openaiApiKey) {
+        headers['X-OpenAI-Key'] = s.openaiApiKey;
+      }
+      if (s?.provider === 'ollama' && typeof s?.ollamaBaseUrl === 'string' && s.ollamaBaseUrl) {
+        headers['X-Ollama-Base'] = s.ollamaBaseUrl;
+      }
+
       const resp = await fetch(url, {
         method: 'POST',
-        headers: {
-          Accept: 'text/event-stream',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ prompt }),
+        headers,
+        body: JSON.stringify(body),
         signal: controller.signal
       });
       if (!resp.ok || !resp.body) {
