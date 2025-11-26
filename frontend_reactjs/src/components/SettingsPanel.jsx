@@ -47,6 +47,9 @@ export default function SettingsPanel({ onClose }) {
       if (settings.provider === 'openai' && settings.openaiApiKey) {
         headers['X-OpenAI-Key'] = settings.openaiApiKey;
       }
+      if (settings.provider === 'openai' && settings.openaiBaseUrl) {
+        headers['X-OpenAI-Base-URL'] = settings.openaiBaseUrl;
+      }
       // For Ollama, include base URL override in header so backend can call the right host
       if (settings.provider === 'ollama' && settings.ollamaBaseUrl) {
         headers['X-Ollama-Base'] = settings.ollamaBaseUrl;
@@ -188,20 +191,36 @@ export default function SettingsPanel({ onClose }) {
           )}
 
           {settings.provider === 'openai' && (
-            <div>
-              <label style={field.label}>OpenAI API Key</label>
-              <input
-                style={field.input}
-                type="password"
-                placeholder="sk-..."
-                value={settings.openaiApiKey || ''}
-                onChange={(e) => update({ openaiApiKey: e.target.value })}
-                disabled={isGenerating}
-              />
-              <div className="text-muted" style={{ marginTop: 4, fontSize: 12 }}>
-                Stored only in your browser and sent to backend only when provider is OpenAI for proxying.
+            <>
+              <div>
+                <label style={field.label}>OpenAI API Key</label>
+                <input
+                  style={field.input}
+                  type="password"
+                  placeholder="sk-..."
+                  value={settings.openaiApiKey || ''}
+                  onChange={(e) => update({ openaiApiKey: e.target.value })}
+                  disabled={isGenerating}
+                />
+                <div className="text-muted" style={{ marginTop: 4, fontSize: 12 }}>
+                  Stored only in your browser and sent to backend only when provider is OpenAI for proxying.
+                </div>
               </div>
-            </div>
+              <div>
+                <label style={field.label}>OpenAI Base URL (optional)</label>
+                <input
+                  style={field.input}
+                  type="url"
+                  placeholder="https://api.openai.com/v1 (leave empty for default)"
+                  value={settings.openaiBaseUrl || ''}
+                  onChange={(e) => update({ openaiBaseUrl: e.target.value })}
+                  disabled={isGenerating}
+                />
+                <div className="text-muted" style={{ marginTop: 4, fontSize: 12 }}>
+                  If set, backend will proxy to this base (e.g., custom gateway/Azure/OpenRouter). Leave blank to use the default OpenAI API base.
+                </div>
+              </div>
+            </>
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>

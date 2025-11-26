@@ -61,6 +61,8 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
 
   const providerLabel = settings?.provider === 'openai' ? 'OpenAI' : 'Ollama';
   const modelLabel = settings?.model || '(model?)';
+  const openaiBase = (settings?.provider === 'openai' && typeof settings?.openaiBaseUrl === 'string' && settings.openaiBaseUrl) ? settings.openaiBaseUrl.trim() : '';
+  const truncatedBase = openaiBase ? (openaiBase.length > 28 ? `${openaiBase.slice(0, 25)}…` : openaiBase) : '';
 
   return (
     <div
@@ -86,8 +88,18 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
           }}
         />
         <strong>Proto Bot</strong>
-        <span className="text-muted" style={{ marginLeft: 8, fontSize: 12 }}>
-          {providerLabel} • {modelLabel} {isSettingsComplete ? '' : '• Incomplete settings'}
+        <span
+          className="text-muted"
+          style={{ marginLeft: 8, fontSize: 12 }}
+          title={
+            settings?.provider === 'openai'
+              ? `Provider: OpenAI${openaiBase ? ` • Base: ${openaiBase}` : ''} • Model: ${modelLabel}`
+              : `Provider: Ollama • Model: ${modelLabel}`
+          }
+        >
+          {providerLabel} • {modelLabel}
+          {settings?.provider === 'openai' && openaiBase ? ` • Base: ${truncatedBase}` : ''}
+          {isSettingsComplete ? '' : ' • Incomplete settings'}
         </span>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

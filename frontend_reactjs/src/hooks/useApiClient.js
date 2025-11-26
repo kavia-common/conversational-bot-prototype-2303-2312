@@ -121,6 +121,7 @@ export default function useApiClient() {
 
       const headers = { 'Content-Type': 'application/json' };
       if (provider === 'openai' && s?.openaiApiKey) headers['X-OpenAI-Key'] = s.openaiApiKey;
+      if (provider === 'openai' && s?.openaiBaseUrl) headers['X-OpenAI-Base-URL'] = s.openaiBaseUrl;
       if (provider === 'ollama' && s?.ollamaBaseUrl) headers['X-Ollama-Base'] = s.ollamaBaseUrl;
 
       const res = await fetch(`${apiBase}/api/generate`, {
@@ -221,6 +222,7 @@ export default function useApiClient() {
       const model = typeof s?.model === 'string' ? s.model : undefined;
       const headers = { Accept: 'text/event-stream', 'Content-Type': 'application/json' };
       if (provider === 'openai' && s?.openaiApiKey) headers['X-OpenAI-Key'] = s.openaiApiKey;
+      if (provider === 'openai' && s?.openaiBaseUrl) headers['X-OpenAI-Base-URL'] = s.openaiBaseUrl;
       if (provider === 'ollama' && s?.ollamaBaseUrl) headers['X-Ollama-Base'] = s.ollamaBaseUrl;
 
       const res = await fetch(`${apiBase}/api/generate`, {

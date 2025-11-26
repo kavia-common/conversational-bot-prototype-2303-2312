@@ -52,6 +52,9 @@ export async function generateOnce(prompt, { signal } = {}) {
   if (s?.provider === 'openai' && typeof s?.openaiApiKey === 'string' && s.openaiApiKey) {
     headers['X-OpenAI-Key'] = s.openaiApiKey;
   }
+  if (s?.provider === 'openai' && typeof s?.openaiBaseUrl === 'string' && s.openaiBaseUrl) {
+    headers['X-OpenAI-Base-URL'] = s.openaiBaseUrl;
+  }
   if (s?.provider === 'ollama' && typeof s?.ollamaBaseUrl === 'string' && s.ollamaBaseUrl) {
     headers['X-Ollama-Base'] = s.ollamaBaseUrl;
   }
@@ -208,6 +211,9 @@ export function streamGenerate(
       };
       if (s?.provider === 'openai' && typeof s?.openaiApiKey === 'string' && s.openaiApiKey) {
         headers['X-OpenAI-Key'] = s.openaiApiKey;
+      }
+      if (s?.provider === 'openai' && typeof s?.openaiBaseUrl === 'string' && s.openaiBaseUrl) {
+        headers['X-OpenAI-Base-URL'] = s.openaiBaseUrl;
       }
       if (s?.provider === 'ollama' && typeof s?.ollamaBaseUrl === 'string' && s.ollamaBaseUrl) {
         headers['X-Ollama-Base'] = s.ollamaBaseUrl;

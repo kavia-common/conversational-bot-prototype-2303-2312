@@ -6,7 +6,8 @@ const defaultSettings = {
   provider: 'ollama', // 'ollama' | 'openai'
   ollamaBaseUrl: 'http://localhost:11434',
   model: 'llama3', // default model; user can override
-  openaiApiKey: '' // stored only in browser; not sent unless provider=openai
+  openaiApiKey: '', // stored only in browser; not sent unless provider=openai
+  openaiBaseUrl: '' // optional custom base for OpenAI-compatible APIs (e.g., Azure/OpenRouter); empty = default
 };
 
 const ACTIONS = {
@@ -25,7 +26,8 @@ function loadSettings() {
       provider: data?.provider === 'openai' ? 'openai' : 'ollama',
       ollamaBaseUrl: typeof data?.ollamaBaseUrl === 'string' ? data.ollamaBaseUrl : defaultSettings.ollamaBaseUrl,
       model: typeof data?.model === 'string' ? data.model : defaultSettings.model,
-      openaiApiKey: typeof data?.openaiApiKey === 'string' ? data.openaiApiKey : ''
+      openaiApiKey: typeof data?.openaiApiKey === 'string' ? data.openaiApiKey : '',
+      openaiBaseUrl: typeof data?.openaiBaseUrl === 'string' ? data.openaiBaseUrl : ''
     };
     return out;
   } catch {
@@ -40,7 +42,8 @@ function saveSettings(s) {
       provider: s?.provider === 'openai' ? 'openai' : 'ollama',
       ollamaBaseUrl: typeof s?.ollamaBaseUrl === 'string' ? s.ollamaBaseUrl : defaultSettings.ollamaBaseUrl,
       model: typeof s?.model === 'string' ? s.model : defaultSettings.model,
-      openaiApiKey: typeof s?.openaiApiKey === 'string' ? s.openaiApiKey : ''
+      openaiApiKey: typeof s?.openaiApiKey === 'string' ? s.openaiApiKey : '',
+      openaiBaseUrl: typeof s?.openaiBaseUrl === 'string' ? s.openaiBaseUrl : ''
     };
     window.localStorage.setItem(LS_KEY, JSON.stringify(payload));
   } catch {
