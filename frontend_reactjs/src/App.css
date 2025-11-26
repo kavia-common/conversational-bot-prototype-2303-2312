@@ -66,4 +66,8 @@
     border-right: none !important;
     border-bottom: 1px solid var(--kavia-border);
   }
+  /* Ensure preview header doesn't leave extra space if text wraps or adjusts */
+  main > div:first-child {
+    min-height: 64px;
+  }
 }

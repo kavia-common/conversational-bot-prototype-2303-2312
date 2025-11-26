@@ -308,7 +308,7 @@ export function generateSiteFromPrompt(prompt, options = {}) {
       <p>${heroSubtitle}</p>
       <div class="cta-group">
         <a class="btn btn-primary" href="#" aria-label="Primary Call To Action">Start now</a>
-        <a class="btn btn-secondary" href="#" aria-label="Secondary Call To Action">Preview</a>
+        <a class="btn btn-secondary" href="#" aria-label="Secondary Call To Action">Learn More</a>
       </div>
     </div>
   </header>
