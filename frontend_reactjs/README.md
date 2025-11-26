@@ -11,18 +11,54 @@ This frontend is a lightweight React application for prototyping conversational 
 - Sandboxed live preview that never executes arbitrary code
 - Clean, accessible, modern UI with a single-column chat layout and dedicated full-screen preview route
 
+## Setup
+
+### First-time installation:
+
+**Important**: Both frontend and backend dependencies must be installed for the application to work properly.
+
+```bash
+# From project root or frontend_reactjs directory
+npm install
+
+# Then install backend dependencies
+cd ../backend
+npm install
+cd ../frontend_reactjs
+```
+
+### Verify installation:
+
+```bash
+# Check that concurrently is installed
+npm list concurrently
+
+# Check that backend dependencies are installed
+cd ../backend && npm list
+```
+
 ## Quickstart
 
-- Install: npm install
-- Development (runs frontend + backend together):
-  - npm start
-    - Backend at http://localhost:8000 (CORS allowed for http://localhost:3000)
-    - Frontend at http://localhost:3000
-- Tests: npm test
-- Build: npm run build
+- **Install**: `npm install` (see Setup section above)
+- **Development** (runs frontend + backend together):
+  ```bash
+  npm start
+  ```
+  - Backend at http://localhost:8000 (CORS allowed for http://localhost:3000)
+  - Frontend at http://localhost:3000
+- **Tests**: `npm test`
+- **Build**: `npm run build`
+
+### Individual service commands:
+
+- **Frontend only**: `npm run start:frontend`
+- **Backend only**: `npm run start:backend`
+
+## Environment Configuration
 
 Optional: create a .env file to configure backend and flags. For example:
 
+```env
 REACT_APP_API_BASE=http://localhost:8000
 REACT_APP_FRONTEND_URL=http://localhost:3000
 REACT_APP_WS_URL=
@@ -30,8 +66,9 @@ REACT_APP_FEATURE_FLAGS=demoPanel,otherFlag
 REACT_APP_EXPERIMENTS_ENABLED=true
 REACT_APP_OLLAMA_BASE_URL=http://localhost:11434
 REACT_APP_OLLAMA_MODEL=llama3
+```
 
-Tip: copy .env.example to .env to get sane local defaults.
+**Tip**: Copy .env.example to .env to get sane local defaults.
 
 If no backend is configured, the app uses a local client-side generator.
 
@@ -55,8 +92,10 @@ All environment parsing is centralized in src/utils/env.js and only REACT_APP_* 
 - OLLAMA_MODEL: from REACT_APP_OLLAMA_MODEL (default llama3)
 
 Usage in code:
+```javascript
 import env from './src/utils/env';
 const { API_BASE, WS_URL, FEATURE_FLAGS, EXPERIMENTS_ENABLED } = env();
+```
 
 ### Example .env mappings
 
@@ -81,9 +120,9 @@ This repo includes a minimal Express backend under ../backend/server.js for loca
 - Generate: POST /api/generate
 
 Scripts:
-- npm start           # starts both backend (8000) and frontend (3000) using concurrently
-- npm run start:backend
-- npm run start:frontend
+- `npm start` - starts both backend (8000) and frontend (3000) using concurrently
+- `npm run start:backend` - backend only
+- `npm run start:frontend` - frontend only
 
 CORS:
 - Backend allows CORS from http://localhost:3000 by default. Adjust with CORS_ORIGIN env if necessary.
@@ -126,10 +165,14 @@ See:
 ## Feature flags and experiments
 
 - Gate UI with FeatureFlagGate (src/components/FeatureFlagGate.jsx):
+  ```jsx
   <FeatureFlagGate flag="demoPanel">...</FeatureFlagGate>
+  ```
 - FEATURE_FLAGS is parsed from REACT_APP_FEATURE_FLAGS as JSON or CSV
 - EXPERIMENTS_ENABLED can be used with allowAll to show experimental blocks for test environments:
+  ```jsx
   <FeatureFlagGate flag="someFlag" allowAll>{...}</FeatureFlagGate>
+  ```
 
 ## Preview behavior
 
@@ -158,9 +201,10 @@ Sanitization:
 
 ## Troubleshooting
 
-- "Client-only" status in the top bar means no backend is configured (set REACT_APP_API_BASE)
-- "API Down" indicates the health check failed to fetch from API_BASE + HEALTHCHECK_PATH (default /healthz)
-- If streaming fails, the app automatically falls back to non-stream requests or local generation to preserve UX
+- **"Client-only" status in the top bar** means no backend is configured (set REACT_APP_API_BASE)
+- **"API Down"** indicates the health check failed to fetch from API_BASE + HEALTHCHECK_PATH (default /healthz)
+- **If streaming fails**, the app automatically falls back to non-stream requests or local generation to preserve UX
+- **Backend dependencies missing**: If you see errors about express or cors not found, run `npm install` in the `../backend` directory
 
 ## Learn more
 
@@ -169,4 +213,3 @@ Sanitization:
 - API/WS client: src/hooks/useApiClient.js
 - Stream manager hook: src/hooks/useStreamedGenerator.js
 - Preview: src/Preview.js and src/PreviewPage.js
-
