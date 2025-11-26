@@ -1,6 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './App.css';
 import Preview from './Preview';
+import TopBar from './components/TopBar';
+import MessageList from './components/MessageList';
+import ChatInput from './components/ChatInput';
 
 /**
  * Ocean Professional theme colors and simple design tokens.
@@ -332,36 +335,7 @@ export function generateSiteFromPrompt(prompt, options = {}) {
   return html;
 }
 
-/**
- * ChatMessage component shows user/bot messages.
- */
-function ChatMessage({ role, content }) {
-  const isUser = role === 'user';
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: isUser ? 'flex-end' : 'flex-start',
-        marginBottom: 10
-      }}
-      aria-live="polite"
-    >
-      <div
-        style={{
-          maxWidth: '80%',
-          padding: '10px 12px',
-          borderRadius: 14,
-          background: isUser ? THEME.primary : THEME.surface,
-          color: isUser ? '#fff' : THEME.text,
-          border: isUser ? 'none' : `1px solid ${THEME.border}`,
-          boxShadow: isUser ? '0 8px 20px rgba(37,99,235,0.25)' : '0 6px 16px rgba(17,24,39,0.04)'
-        }}
-      >
-        {content}
-      </div>
-    </div>
-  );
-}
+
 
 /**
  * PUBLIC_INTERFACE
@@ -396,10 +370,6 @@ function App() {
   const useApi = (typeof apiBase === 'string' && apiBase.trim().length > 0);
 
   const previewSrcDoc = useIFrameSrcDoc(currentHtml);
-  const chatEndRef = useRef(null);
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isGenerating]);
 
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
 
@@ -518,142 +488,17 @@ function App() {
           flexDirection: 'column'
         }}
       >
-        <div
-          style={{
-            padding: 16,
-            borderBottom: `1px solid ${THEME.border}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
-              aria-hidden="true"
-              style={{
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle at 30% 30%, #F59E0B, #2563EB)',
-                boxShadow: '0 0 0 3px rgba(37,99,235,0.12), 0 6px 20px rgba(37,99,235,0.35)'
-              }}
-            />
-            <strong>Proto Bot</strong>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              className="theme-toggle"
-              onClick={toggleTheme}
-              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-              style={{
-                position: 'static',
-                padding: '8px 12px',
-                borderRadius: 10,
-                fontWeight: 700,
-                background: THEME.primary,
-                color: '#fff',
-                border: 'none'
-              }}
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
-            <button
-              onClick={handleReset}
-              aria-label="Reset chat and preview"
-              style={{
-                padding: '8px 12px',
-                borderRadius: 10,
-                fontWeight: 700,
-                background: THEME.surface,
-                color: THEME.text,
-                border: `1px solid ${THEME.border}`
-              }}
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: 16,
-            overflowY: 'auto',
-            flex: 1
-          }}
-          aria-label="Chat history"
-        >
-          {messages.map((m, idx) => (
-            <ChatMessage key={idx} role={m.role} content={m.content} />
-          ))}
-          {isGenerating && <ChatMessage role="assistant" content="Thinking..." />}
-          <div ref={chatEndRef} />
-        </div>
-
-        <form onSubmit={onSubmit} style={{ padding: 16, borderTop: `1px solid ${THEME.border}` }}>
-          <label htmlFor="prompt" style={{ display: 'none' }}>Prompt</label>
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              background: THEME.surface,
-              border: `1px solid ${THEME.border}`,
-              borderRadius: 14,
-              padding: 8
-            }}
-          >
-            <input
-              id="prompt"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder='e.g., "Create a dark SaaS landing with features, articles, and contact"'
-              aria-label="Enter your prompt"
-              style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'transparent',
-                color: THEME.text
-              }}
-            />
-            <button
-              type="submit"
-              disabled={isGenerating}
-              className="btn btn-primary"
-              style={{
-                padding: '10px 14px',
-                borderRadius: 12,
-                border: 'none'
-              }}
-              aria-label="Send prompt"
-            >
-              {isGenerating ? 'Generating...' : 'Send'}
-            </button>
-          </div>
-          {error ? (
-            <div
-              role="alert"
-              style={{
-                color: THEME.error,
-                marginTop: 8,
-                fontSize: 13
-              }}
-            >
-              {error}
-            </div>
-          ) : null}
-          {useApi ? (
-            <div style={{ marginTop: 8, color: THEME.subtle, fontSize: 12 }}>
-              Using API base: {apiBase}
-            </div>
-          ) : (
-            <div style={{ marginTop: 8, color: THEME.subtle, fontSize: 12 }}>
-              Running in client-only mode. Set REACT_APP_API_BASE to integrate a backend later.
-            </div>
-          )}
-        </form>
+        <TopBar theme={theme} onToggleTheme={toggleTheme} onReset={handleReset} />
+        <MessageList messages={messages} isGenerating={isGenerating} />
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          isGenerating={isGenerating}
+          error={error}
+          useApi={useApi}
+          apiBase={apiBase}
+          onSubmit={onSubmit}
+        />
       </aside>
 
       {/* Main Canvas - Preview */}
