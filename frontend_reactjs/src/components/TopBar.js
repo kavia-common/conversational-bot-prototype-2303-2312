@@ -1,11 +1,10 @@
 import React from 'react';
 import { useChatState } from '../state/chatStore';
-import { copyHtmlToClipboard, downloadHtml } from '../utils/exporters';
 
 /**
  * PUBLIC_INTERFACE
  * TopBar renders the chat header containing the app title, theme toggle, and reset button.
- * Also exposes export actions (Copy HTML, Download HTML) and a dedicated Preview button to open the /#/preview route.
+ * It includes a dedicated Preview button to open the /#/preview route. Export actions were removed.
  */
 export default function TopBar({ theme, onToggleTheme, onReset }) {
   /** This is a public function: top bar control section for the chat sidebar. */
@@ -18,22 +17,6 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
     currentHtml = '';
   }
   const hasHtml = currentHtml.trim().length > 0;
-
-  const handleCopy = async () => {
-    const ok = await copyHtmlToClipboard(currentHtml);
-    if (!ok && process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.debug('[TopBar] Copy failed or empty HTML');
-    }
-  };
-
-  const handleDownload = () => {
-    const ok = downloadHtml(currentHtml, 'prototype.html');
-    if (!ok && process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.debug('[TopBar] Download skipped or failed (empty HTML?)');
-    }
-  };
 
   // Navigate to dedicated preview route. Uses hash route (#/preview) to avoid dependency on react-router.
   const handleOpenPreviewRoute = () => {
@@ -80,27 +63,6 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
         <strong>Proto Bot</strong>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        {/* Export actions - operate ONLY on generated HTML from store */}
-        <button
-          onClick={handleCopy}
-          aria-label="Copy HTML to clipboard"
-          style={commonBtn}
-          type="button"
-          disabled={!hasHtml}
-          title={hasHtml ? 'Copy generated HTML' : 'Nothing to copy yet'}
-        >
-          Copy HTML
-        </button>
-        <button
-          onClick={handleDownload}
-          aria-label="Download HTML"
-          style={commonBtn}
-          type="button"
-          disabled={!hasHtml}
-          title={hasHtml ? 'Download generated HTML' : 'Nothing to download yet'}
-        >
-          Download HTML
-        </button>
         <button
           onClick={handleOpenPreviewRoute}
           aria-label="Open Preview"

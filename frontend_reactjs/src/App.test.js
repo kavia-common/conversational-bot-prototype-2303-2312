@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from './App';
 
 describe('App integration (chat-only layout)', () => {
-  test('renders initial assistant welcome message and disabled export/preview actions', () => {
+  test('renders initial assistant welcome message and disabled preview action', () => {
     render(<App />);
 
     // Seeded assistant message from chatStore
@@ -10,14 +10,11 @@ describe('App integration (chat-only layout)', () => {
       screen.getByText(/Describe the website you want to prototype/i)
     ).toBeInTheDocument();
 
-    // Export buttons exist but disabled initially
-    expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Download HTML/i })).toBeDisabled();
     // Preview button should be present and disabled initially
     expect(screen.getByRole('button', { name: /Open Preview/i })).toBeDisabled();
   });
 
-  test('submitting a prompt shows assistant response and enables export/preview actions', async () => {
+  test('submitting a prompt shows assistant response and enables preview action', async () => {
     render(<App />);
 
     // Enter a prompt and submit
@@ -36,14 +33,11 @@ describe('App integration (chat-only layout)', () => {
       { timeout: 4000 }
     );
 
-    // Export action buttons should now be enabled as content exists
-    expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /Download HTML/i })).toBeEnabled();
     // Preview button enabled
     expect(screen.getByRole('button', { name: /Open Preview/i })).toBeEnabled();
   });
 
-  test('reset clears messages back to welcome and disables export/preview', async () => {
+  test('reset clears messages back to welcome and disables preview', async () => {
     render(<App />);
 
     // Generate content first
@@ -71,21 +65,15 @@ describe('App integration (chat-only layout)', () => {
       screen.getByText(/Describe the website you want to prototype/i)
     ).toBeInTheDocument();
 
-    // Export actions disabled again
-    expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /Download HTML/i })).toBeDisabled();
+    // Preview disabled again
     expect(screen.getByRole('button', { name: /Open Preview/i })).toBeDisabled();
   });
 
-  test('export buttons exist and are enabled when content exists', async () => {
+  test('preview button exists and is enabled when content exists', async () => {
     render(<App />);
 
     // Initially present but disabled
-    const copyBtn = screen.getByRole('button', { name: /Copy HTML to clipboard/i });
-    const downloadBtn = screen.getByRole('button', { name: /Download HTML/i });
     const previewBtn = screen.getByRole('button', { name: /Open Preview/i });
-    expect(copyBtn).toBeDisabled();
-    expect(downloadBtn).toBeDisabled();
     expect(previewBtn).toBeDisabled();
 
     // Generate content
@@ -102,9 +90,7 @@ describe('App integration (chat-only layout)', () => {
       { timeout: 4000 }
     );
 
-    // Buttons enabled now
-    expect(copyBtn).toBeEnabled();
-    expect(downloadBtn).toBeEnabled();
+    // Button enabled now
     expect(previewBtn).toBeEnabled();
   });
 });
