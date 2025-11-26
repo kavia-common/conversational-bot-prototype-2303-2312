@@ -3,6 +3,7 @@ import './App.css';
 import TopBar from './components/TopBar';
 import MessageList from './components/MessageList';
 import ChatInput from './components/ChatInput';
+import NotificationBanner from './components/NotificationBanner.jsx';
 import { ChatProvider, useChatActions, useChatState } from './state/chatStore';
 import { generateSiteFromPrompt, sanitizeGeneratedHtml } from './utils/generation';
 import useTypingIndicator from './hooks/useTypingIndicator';
@@ -13,6 +14,8 @@ function AppInner() {
   const { messages, isGenerating, error, theme } = useChatState();
   const { setMessages, setHtml, setGenerating, setError, setTheme, reset } = useChatActions();
   const [input, setInput] = useState('');
+  const [banner, setBanner] = useState({ visible: false, type: 'info', message: '' });
+  const [lastPrompt, setLastPrompt] = useState('');
 
   // Ensure document theme attribute exists early
   useEffect(() => {
@@ -42,14 +45,22 @@ function AppInner() {
     await new Promise((r) => setTimeout(r, jitter));
   };
 
+  const showInfo = (message) => setBanner({ visible: true, type: 'info', message });
+  const showSuccess = (message) => setBanner({ visible: true, type: 'success', message });
+  const showError = (message) => setBanner({ visible: true, type: 'error', message });
+  const hideBanner = () => setBanner((b) => ({ ...b, visible: false }));
+
   const handleGenerate = async (nextPrompt) => {
     const err = validate(nextPrompt);
     if (err) {
       setError(err);
+      showError(err);
       return;
     }
     setError('');
     setGenerating(true);
+    setLastPrompt(nextPrompt);
+    showInfo('Generating…');
 
     // Append user message
     const userMsg = { role: 'user', content: nextPrompt.trim() };
@@ -106,8 +117,13 @@ function AppInner() {
           }
           if (result?.error) {
             setError(result.error);
+            showError(`Generation failed: ${result.error}`);
+          } else {
+            showSuccess('Generation complete');
           }
           stopTyping();
+        } else {
+          showSuccess('Generation complete');
         }
       } else {
         await simulateThinking(600, 1400);
@@ -124,9 +140,12 @@ function AppInner() {
             'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
         };
         setMessages([...baseMessages, botAck]);
+        showSuccess('Generation complete');
       }
     } catch (e) {
-      setError('Failed to generate preview. Please try again.');
+      const msg = e?.message || 'Failed to generate preview. Please try again.';
+      setError(msg);
+      showError(`Generation failed: ${msg}`);
     } finally {
       setGenerating(false);
     }
@@ -149,8 +168,23 @@ function AppInner() {
     return [...messages, { role: 'assistant', content: indicatorText }];
   }, [messages, isTyping, indicatorText]);
 
+  const onRetry = () => {
+    hideBanner();
+    if (lastPrompt) {
+      handleGenerate(lastPrompt);
+    }
+  };
+
   return (
     <div className="App">
+      <NotificationBanner
+        visible={banner.visible}
+        type={banner.type}
+        message={banner.message}
+        onClose={hideBanner}
+        onRetry={banner.type === 'error' ? onRetry : undefined}
+        retryLabel="Retry"
+      />
       {/* Single-column chat layout (sidebar) */}
       <aside className="app-sidebar" aria-label="Chat panel">
         <div className="app-topbar">
@@ -169,6 +203,9 @@ function AppInner() {
             apiBase={apiBase}
             onSubmit={onSubmit}
           />
+          <div className="text-muted" style={{ marginTop: 6, fontSize: 12 }}>
+            {isGenerating ? 'Generating…' : error ? `Generation failed: ${error}` : messages.length > 1 ? 'Generation complete' : ''}
+          </div>
         </div>
       </aside>
     </div>

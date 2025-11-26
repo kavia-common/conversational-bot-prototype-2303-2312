@@ -6,21 +6,50 @@ const API_BASE =
   process.env.REACT_APP_BACKEND_URL ||
   '';
 
+function safeReasonFromText(status, text) {
+  const snippet = (text || '').trim().slice(0, 300);
+  return status >= 500
+    ? 'Server error'
+    : status === 429
+    ? 'Rate limited'
+    : status === 408
+    ? 'Request timeout'
+    : status >= 400
+    ? (snippet || `Request failed (${status})`)
+    : 'Network error';
+}
+
 /**
  * PUBLIC_INTERFACE
  * Call non-streaming generation endpoint.
  */
 export async function generateOnce(prompt, { signal } = {}) {
   const url = `${API_BASE}/api/generate`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt }),
-    signal
-  });
+  let resp;
+  try {
+    resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ prompt }),
+      signal
+    });
+  } catch (e) {
+    throw new Error('Network error');
+  }
   if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`Generate failed: ${resp.status} ${text}`);
+    // Try to parse JSON error { error: "..." }
+    let msg = '';
+    try {
+      const j = await resp.json();
+      msg = typeof j?.error === 'string' ? j.error : '';
+    } catch {
+      const t = await resp.text().catch(() => '');
+      msg = safeReasonFromText(resp.status, t);
+    }
+    const reason = msg || safeReasonFromText(resp.status, '');
+    const err = new Error(reason);
+    err.status = resp.status;
+    throw err;
   }
   return resp.json();
 }
@@ -30,13 +59,17 @@ export async function generateOnce(prompt, { signal } = {}) {
  * Stream generation via SSE, progressively returns chunks via onChunk.
  * It uses GET /api/generate/stream by default as EventSource and falls back to fetch+stream reader.
  */
-export function streamGenerate(prompt, {
-  onChunk,
-  onDone,
-  onError,
-  usePost = false,
-  signal
-} = {}) {
+export function streamGenerate(
+  prompt,
+  {
+    onChunk,
+    onDone,
+    onError,
+    onStatus, // optional callback for user-facing status messages
+    usePost = false,
+    signal
+  } = {}
+) {
   const controller = new AbortController();
   // Link external signal to internal controller
   if (signal) {
@@ -51,35 +84,68 @@ export function streamGenerate(prompt, {
   const cleanup = () => {
     if (closed) return;
     closed = true;
-    try { es && es.close(); } catch {}
+    try {
+      es && es.close();
+    } catch {}
   };
 
   let es;
   if (supportsEventSource) {
     const url = `${API_BASE}/api/generate/stream?prompt=${encodeURIComponent(prompt)}`;
-    es = new EventSource(url, { withCredentials: true });
-    const onMessage = (ev) => {
-      if (ev.type === 'error') {
-        onError?.(new Error('SSE connection error'));
-        cleanup();
-        return;
-      }
+    try {
+      es = new EventSource(url, { withCredentials: true });
+    } catch {
+      onError?.(new Error('Unable to open stream'));
+      return { abort: () => controller.abort() };
+    }
+
+    const handleEsError = () => {
+      onError?.(new Error('SSE connection error'));
+      cleanup();
     };
+
+    es.addEventListener('open', () => {
+      onStatus?.('Generating…');
+    });
+
     es.addEventListener('chunk', (e) => {
       try {
         const data = JSON.parse(e.data);
         onChunk?.(data);
-      } catch (_e) {}
+      } catch {
+        // ignore malformed chunk
+      }
     });
-    es.addEventListener('done', () => {
+
+    es.addEventListener('done', (e) => {
+      try {
+        // Some backends may include final payload in done event
+        if (e?.data) {
+          const data = JSON.parse(e.data);
+          onChunk?.(data);
+        }
+      } catch {}
       onDone?.();
       cleanup();
     });
+
     es.addEventListener('error', (e) => {
-      onError?.(new Error('SSE error'));
+      // Custom 'error' event with JSON { message }
+      try {
+        if (e?.data) {
+          const data = JSON.parse(e.data);
+          const msg = typeof data?.message === 'string' ? data.message : 'Stream error';
+          onError?.(new Error(msg));
+        } else {
+          onError?.(new Error('Stream error'));
+        }
+      } catch {
+        onError?.(new Error('Stream error'));
+      }
       cleanup();
     });
-    es.onerror = onMessage;
+
+    es.onerror = handleEsError;
 
     // Abort handling: EventSource has no direct abort, we close it.
     controller.signal.addEventListener('abort', () => {
@@ -97,31 +163,37 @@ export function streamGenerate(prompt, {
       const resp = await fetch(url, {
         method: 'POST',
         headers: {
-          'Accept': 'text/event-stream',
+          Accept: 'text/event-stream',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ prompt }),
         signal: controller.signal
       });
       if (!resp.ok || !resp.body) {
-        const t = await resp.text().catch(() => '');
-        throw new Error(`Stream failed: ${resp.status} ${t}`);
+        let t = '';
+        try {
+          t = await resp.text();
+        } catch {
+          // ignore
+        }
+        throw new Error(safeReasonFromText(resp.status || 0, t));
       }
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      onStatus?.('Generating…');
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
         buffer += chunk;
 
-        // Parse SSE frames
-        let idx;
-        while ((idx = buffer.indexOf('\n\n')) >= 0) {
-          const frame = buffer.slice(0, idx);
-          buffer = buffer.slice(idx + 2);
-          const lines = frame.split('\n');
+        // Parse SSE frames (support CRLF/LF)
+        let sepIdx;
+        while ((sepIdx = buffer.search(/\r?\n\r?\n/)) >= 0) {
+          const frame = buffer.slice(0, sepIdx);
+          buffer = buffer.slice(sepIdx + (buffer[sepIdx] === '\r' ? 4 : 2));
+          const lines = frame.split(/\r?\n/);
           let event = 'message';
           let data = '';
           for (const line of lines) {
@@ -135,15 +207,24 @@ export function streamGenerate(prompt, {
             try {
               const obj = JSON.parse(data);
               onChunk?.(obj);
-            } catch {}
+            } catch {
+              // ignore malformed
+            }
           } else if (event === 'done') {
+            // optional data on done
+            try {
+              if (data) {
+                const obj = JSON.parse(data);
+                onChunk?.(obj);
+              }
+            } catch {}
             onDone?.();
           } else if (event === 'error') {
             try {
               const obj = JSON.parse(data);
-              onError?.(new Error(obj?.message || 'stream error'));
+              onError?.(new Error(obj?.message || 'Stream error'));
             } catch {
-              onError?.(new Error('stream error'));
+              onError?.(new Error('Stream error'));
             }
           }
         }
@@ -152,7 +233,7 @@ export function streamGenerate(prompt, {
       if (controller.signal.aborted) {
         onError?.(new Error('aborted'));
       } else {
-        onError?.(err);
+        onError?.(err instanceof Error ? err : new Error('Network error'));
       }
     }
   })();

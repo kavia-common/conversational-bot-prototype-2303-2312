@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { generateOnce, streamGenerate } from '../api/generatorApi';
 
 /**
@@ -14,6 +14,7 @@ export function useStreamedGenerator() {
   const [showCode, setShowCode] = useState(false); // Preview/Code toggle
   const [currentHtml, setCurrentHtml] = useState(''); // sanitized final html
   const abortRef = useRef(null);
+  const lastPromptRef = useRef('');
 
   const reset = useCallback(() => {
     setIsStreaming(false);
@@ -28,62 +29,78 @@ export function useStreamedGenerator() {
     }
   }, []);
 
-  const start = useCallback((prompt, { stream = true } = {}) => {
-    reset();
-    setIsStreaming(true);
-    setStatus('Generating…');
+  const start = useCallback(
+    (prompt, { stream = true } = {}) => {
+      reset();
+      lastPromptRef.current = String(prompt || '');
+      setIsStreaming(true);
+      setStatus('Generating…');
 
-    if (stream) {
-      // Start streaming
-      const handle = streamGenerate(prompt, {
-        onChunk: (evt) => {
-          if (evt?.type === 'status') {
-            setStatus(String(evt.payload || ''));
-          } else if (evt?.type === 'code') {
-            // progressively update code buffer
-            setCodeBuffer(String(evt.payload || ''));
-          } else if (evt?.type === 'meta') {
-            setMeta(evt.payload || {});
+      if (stream) {
+        // Start streaming
+        const handle = streamGenerate(prompt, {
+          onStatus: (msg) => {
+            setStatus(typeof msg === 'string' && msg ? msg : 'Generating…');
+          },
+          onChunk: (evt) => {
+            // Normalize chunk shapes
+            try {
+              if (evt?.type === 'status') {
+                setStatus(String(evt.payload || ''));
+              } else if (evt?.type === 'code') {
+                setCodeBuffer(String(evt.payload || ''));
+              } else if (evt?.type === 'meta') {
+                setMeta(evt.payload || {});
+              } else if (typeof evt?.html === 'string' && evt?.done) {
+                // Some backends may send final html in a single event on 'done'
+                setCodeBuffer((prev) => prev || '');
+              }
+            } catch {
+              // ignore malformed event
+            }
+          },
+          onDone: () => {
+            setIsStreaming(false);
+            setStatus('Generation complete');
+            // The consumer should sanitize and render; we store raw buffer here.
+            setCurrentHtml(''); // Let the UI convert codeBuffer into rendered preview as needed
+            abortRef.current = null;
+          },
+          onError: (err) => {
+            setIsStreaming(false);
+            const msg = err?.message === 'aborted' ? 'Generation canceled' : `Generation failed: ${err?.message || 'Unknown error'}`;
+            setStatus(msg);
+            setError(err?.message || 'Unknown error');
+            abortRef.current = null;
           }
-        },
-        onDone: () => {
-          setIsStreaming(false);
-          setStatus('Done');
-          // The consumer should sanitize and render; we store raw buffer here.
-          setCurrentHtml(''); // Let the UI convert codeBuffer into rendered preview as needed
-          abortRef.current = null;
-        },
-        onError: (err) => {
-          setIsStreaming(false);
-          setError(err?.message || 'Stream error');
-          abortRef.current = null;
-        }
-      });
-      abortRef.current = handle;
-    } else {
-      // Non-streaming fallback
-      const controller = new AbortController();
-      abortRef.current = { abort: () => controller.abort() };
-      generateOnce(prompt, { signal: controller.signal })
-        .then(({ code, meta }) => {
-          setCodeBuffer(code || '');
-          setMeta(meta || {});
-          setIsStreaming(false);
-          setStatus('Done');
-        })
-        .catch((err) => {
-          if (controller.signal.aborted) {
-            setError('aborted');
-          } else {
-            setError(err?.message || 'error');
-          }
-          setIsStreaming(false);
-        })
-        .finally(() => {
-          abortRef.current = null;
         });
-    }
-  }, [reset]);
+        abortRef.current = handle;
+      } else {
+        // Non-streaming fallback
+        const controller = new AbortController();
+        abortRef.current = { abort: () => controller.abort() };
+        setStatus('Generating…');
+        generateOnce(prompt, { signal: controller.signal })
+          .then(({ code, meta }) => {
+            setCodeBuffer(code || '');
+            setMeta(meta || {});
+            setIsStreaming(false);
+            setStatus('Generation complete');
+          })
+          .catch((err) => {
+            const isAborted = controller.signal.aborted;
+            const msg = isAborted ? 'Generation canceled' : `Generation failed: ${err?.message || 'Unknown error'}`;
+            setError(err?.message || (isAborted ? 'aborted' : 'error'));
+            setIsStreaming(false);
+            setStatus(msg);
+          })
+          .finally(() => {
+            abortRef.current = null;
+          });
+      }
+    },
+    [reset]
+  );
 
   const cancel = useCallback(() => {
     if (abortRef.current) {
@@ -91,8 +108,14 @@ export function useStreamedGenerator() {
       abortRef.current = null;
     }
     setIsStreaming(false);
-    setStatus('Canceled');
+    setStatus('Generation canceled');
   }, []);
+
+  const retry = useCallback(() => {
+    const last = lastPromptRef.current || '';
+    if (!last) return;
+    start(last, { stream: true });
+  }, [start]);
 
   const copyCurrent = useCallback(async () => {
     try {
@@ -115,6 +138,7 @@ export function useStreamedGenerator() {
     setCurrentHtml,
     start,
     cancel,
+    retry,
     reset,
     copyCurrent
   };

@@ -38,10 +38,10 @@ export default function ChatInput({
           type="submit"
           disabled={isGenerating}
           className="btn btn-primary"
-          aria-label="Send prompt"
-          title={isGenerating ? 'Generating...' : 'Send'}
+          aria-label={isGenerating ? 'Generating…' : 'Send prompt'}
+          title={isGenerating ? 'Generating…' : 'Send'}
         >
-          {isGenerating ? 'Generating...' : 'Send'}
+          {isGenerating ? 'Generating…' : 'Send'}
         </button>
       </div>
       {error ? (

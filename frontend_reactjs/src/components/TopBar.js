@@ -10,17 +10,21 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
   /** This is a public function: top bar control section for the chat sidebar. */
   // Defensive guard if context not mounted yet
   let currentHtml = '';
+  let isGenerating = false;
   try {
     const state = useChatState();
     currentHtml = typeof state?.currentHtml === 'string' ? state.currentHtml : '';
+    isGenerating = !!state?.isGenerating;
   } catch {
     currentHtml = '';
+    isGenerating = false;
   }
   const hasHtml = currentHtml.trim().length > 0;
+  const previewEnabled = hasHtml && !isGenerating;
 
   // Navigate to dedicated preview route. Uses hash route (#/preview) to avoid dependency on react-router.
   const handleOpenPreviewRoute = () => {
-    if (!hasHtml) return;
+    if (!previewEnabled) return;
     // Open in a new tab
     const url = `${window.location.origin}${window.location.pathname}#/preview`;
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -33,8 +37,8 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
     border: '1px solid var(--kavia-border)',
     background: 'var(--kavia-surface)',
     color: 'var(--kavia-text)',
-    cursor: hasHtml ? 'pointer' : 'not-allowed',
-    opacity: hasHtml ? 1 : 0.6
+    cursor: previewEnabled ? 'pointer' : 'not-allowed',
+    opacity: previewEnabled ? 1 : 0.6
   };
 
   return (
@@ -68,8 +72,14 @@ export default function TopBar({ theme, onToggleTheme, onReset }) {
           aria-label="Open Preview"
           style={commonBtn}
           type="button"
-          disabled={!hasHtml}
-          title={hasHtml ? 'Open dedicated preview page' : 'No preview available yet'}
+          disabled={!previewEnabled}
+          title={
+            previewEnabled
+              ? 'Open dedicated preview page'
+              : isGenerating
+              ? 'Generating… Please wait'
+              : 'No preview available yet'
+          }
         >
           Preview
         </button>
