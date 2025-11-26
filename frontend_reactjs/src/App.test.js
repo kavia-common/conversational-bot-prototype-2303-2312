@@ -1,35 +1,23 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from './App';
 
-// Helper to get preview iframe (when content exists) or empty-state status element
-function getPreviewElements() {
-  const status = screen.queryByRole('status');
-  const iframe = screen.queryByTitle('Prototype Preview');
-  return { status, iframe };
-}
-
-describe('App integration', () => {
-  test('renders initial assistant welcome message', () => {
+describe('App integration (chat-only layout)', () => {
+  test('renders initial assistant welcome message and disabled export/preview actions', () => {
     render(<App />);
+
     // Seeded assistant message from chatStore
     expect(
       screen.getByText(/Describe the website you want to prototype/i)
     ).toBeInTheDocument();
 
-    // Preview empty state visible initially
-    const { status, iframe } = getPreviewElements();
-    expect(status).toBeInTheDocument();
-    expect(status).toHaveTextContent(/No preview yet/i);
-    expect(iframe).not.toBeInTheDocument();
-
     // Export buttons exist but disabled initially
     expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Download HTML/i })).toBeDisabled();
-    // New Preview button should be present and disabled initially
+    // Preview button should be present and disabled initially
     expect(screen.getByRole('button', { name: /Open Preview/i })).toBeDisabled();
   });
 
-  test('submitting a prompt shows assistant response and replaces preview empty-state with generated content', async () => {
+  test('submitting a prompt shows assistant response and enables export/preview actions', async () => {
     render(<App />);
 
     // Enter a prompt and submit
@@ -48,13 +36,6 @@ describe('App integration', () => {
       { timeout: 4000 }
     );
 
-    // Preview should now render an iframe with generated srcDoc; empty-state should be gone
-    await waitFor(() => {
-      const { status, iframe } = getPreviewElements();
-      expect(status).not.toBeInTheDocument();
-      expect(iframe).toBeInTheDocument();
-    });
-
     // Export action buttons should now be enabled as content exists
     expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Download HTML/i })).toBeEnabled();
@@ -62,7 +43,7 @@ describe('App integration', () => {
     expect(screen.getByRole('button', { name: /Open Preview/i })).toBeEnabled();
   });
 
-  test('reset clears messages back to welcome and clears preview', async () => {
+  test('reset clears messages back to welcome and disables export/preview', async () => {
     render(<App />);
 
     // Generate content first
@@ -81,12 +62,6 @@ describe('App integration', () => {
       { timeout: 4000 }
     );
 
-    // Verify preview shows iframe
-    await waitFor(() => {
-      const { iframe } = getPreviewElements();
-      expect(iframe).toBeInTheDocument();
-    });
-
     // Click Reset
     const resetBtn = screen.getByRole('button', { name: /Reset chat and preview/i });
     fireEvent.click(resetBtn);
@@ -95,12 +70,6 @@ describe('App integration', () => {
     expect(
       screen.getByText(/Describe the website you want to prototype/i)
     ).toBeInTheDocument();
-
-    // Preview empty state back
-    const { status, iframe } = getPreviewElements();
-    expect(status).toBeInTheDocument();
-    expect(status).toHaveTextContent(/No preview yet/i);
-    expect(iframe).not.toBeInTheDocument();
 
     // Export actions disabled again
     expect(screen.getByRole('button', { name: /Copy HTML to clipboard/i })).toBeDisabled();
@@ -125,7 +94,6 @@ describe('App integration', () => {
     fireEvent.change(input, { target: { value: 'Create a blog homepage' } });
     fireEvent.click(send);
 
-    // Wait for assistant response and preview iframe
     await waitFor(
       () =>
         expect(
@@ -133,10 +101,6 @@ describe('App integration', () => {
         ).toBeInTheDocument(),
       { timeout: 4000 }
     );
-    await waitFor(() => {
-      const { iframe } = getPreviewElements();
-      expect(iframe).toBeInTheDocument();
-    });
 
     // Buttons enabled now
     expect(copyBtn).toBeEnabled();
