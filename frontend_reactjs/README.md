@@ -14,18 +14,24 @@ This frontend is a lightweight React application for prototyping conversational 
 ## Quickstart
 
 - Install: npm install
-- Development: npm start then open http://localhost:3000
+- Development (runs frontend + backend together):
+  - npm start
+    - Backend at http://localhost:8000 (CORS allowed for http://localhost:3000)
+    - Frontend at http://localhost:3000
 - Tests: npm test
 - Build: npm run build
 
 Optional: create a .env file to configure backend and flags. For example:
 
-REACT_APP_API_BASE=http://localhost:8080
+REACT_APP_API_BASE=http://localhost:8000
+REACT_APP_FRONTEND_URL=http://localhost:3000
 REACT_APP_WS_URL=
 REACT_APP_FEATURE_FLAGS=demoPanel,otherFlag
 REACT_APP_EXPERIMENTS_ENABLED=true
 REACT_APP_OLLAMA_BASE_URL=http://localhost:11434
 REACT_APP_OLLAMA_MODEL=llama3
+
+Tip: copy .env.example to .env to get sane local defaults.
 
 If no backend is configured, the app uses a local client-side generator.
 
@@ -67,6 +73,20 @@ const { API_BASE, WS_URL, FEATURE_FLAGS, EXPERIMENTS_ENABLED } = env();
 
 - REACT_APP_WS_URL=wss://example.com/stream
   - WebSocket integration attempts streaming from this URL
+
+## Local backend
+
+This repo includes a minimal Express backend under ../backend/server.js for local development:
+- Health: GET /healthz
+- Generate: POST /api/generate
+
+Scripts:
+- npm start           # starts both backend (8000) and frontend (3000) using concurrently
+- npm run start:backend
+- npm run start:frontend
+
+CORS:
+- Backend allows CORS from http://localhost:3000 by default. Adjust with CORS_ORIGIN env if necessary.
 
 ## Backend integration
 
