@@ -7,6 +7,7 @@ import ChatInput from './components/ChatInput';
 import { ChatProvider, useChatActions, useChatState } from './state/chatStore';
 import { generateSiteFromPrompt, sanitizeGeneratedHtml } from './utils/generation';
 import useTypingIndicator from './hooks/useTypingIndicator';
+import useApiClient from './hooks/useApiClient';
 
 /**
  * Ocean Professional theme colors and simple design tokens.
@@ -45,10 +46,8 @@ function AppInner() {
   // Typing indicator for assistant streaming UX
   const { isTyping, indicatorText, startTyping, stopTyping } = useTypingIndicator();
 
-  // Read API base from env; normalize to a string and avoid mixing ?? with logical operators
-  const envApi = process.env.REACT_APP_API_BASE;
-  const apiBase = typeof envApi === 'string' ? envApi : '';
-  const useApi = (typeof apiBase === 'string' && apiBase.trim().length > 0);
+  // API client hook: determines whether API is configured and provides methods
+  const { useApi, apiBase, sendMessage, streamMessage } = useApiClient();
 
   const previewSrcDoc = useIFrameSrcDoc(currentHtml);
 
@@ -85,28 +84,86 @@ function AppInner() {
     startTyping({ baseText: 'Assistant is typing', intervalMs: 300, maxDots: 3, minDurationMs: 900 });
 
     try {
-      // Simulate some "thinking" time and generation work
-      await simulateThinking(600, 1400);
+      if (useApi) {
+        // Use API client. Prefer streaming to give UX parity if backend supports it.
+        let finalHtml = '';
+        let appendedFinal = false;
 
-      // Generate preview HTML locally (client mode)
-      const html = generateSiteFromPrompt(nextPrompt.trim(), {});
-      const sanitized = sanitizeGeneratedHtml(html);
-      if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
-        console.debug('[App] Setting preview HTML. length=', sanitized?.length || 0);
+        await streamMessage(baseMessages, (delta) => {
+          // delta: { role, content, done, html?, error? }
+          if (delta?.done) {
+            // finalize: set HTML if provided and append final assistant message once
+            if (typeof delta.html === 'string' && delta.html) {
+              finalHtml = delta.html;
+              setHtml(delta.html);
+            }
+            stopTyping();
+            if (!appendedFinal) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content:
+                    typeof delta?.content === 'string' && delta.content
+                      ? delta.content
+                      : 'Preview updated.'
+                }
+              ]);
+              appendedFinal = true;
+            }
+          } else if (typeof delta?.content === 'string') {
+            // Show streaming indicator text
+            // Use typing hook already animating; we won't append intermediate chunks to the list to keep UI simple
+          }
+        });
+
+        // If stream didn't produce html, attempt non-stream send as fallback
+        if (!finalHtml) {
+          const result = await sendMessage(baseMessages);
+          if (typeof result?.html === 'string') {
+            setHtml(result.html);
+          }
+          if (Array.isArray(result?.messages)) {
+            setMessages(result.messages);
+          } else {
+            // Ensure we append an assistant ack to preserve previous behavior
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                content:
+                  'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
+              }
+            ]);
+          }
+          if (result?.error) {
+            setError(result.error);
+          }
+          stopTyping();
+        }
+      } else {
+        // Client-only mode: preserve existing behavior
+        await simulateThinking(600, 1400);
+
+        const html = generateSiteFromPrompt(nextPrompt.trim(), {});
+        const sanitized = sanitizeGeneratedHtml(html);
+        if (process.env.NODE_ENV !== 'production') {
+          // eslint-disable-next-line no-console
+          console.debug('[App] Setting preview HTML. length=', sanitized?.length || 0);
+        }
+        setHtml(sanitized);
+
+        // Stop typing before posting the final message (respects min duration)
+        stopTyping();
+
+        // Append assistant final message
+        const botAck = {
+          role: 'assistant',
+          content:
+            'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
+        };
+        setMessages([...baseMessages, botAck]);
       }
-      setHtml(sanitized);
-
-      // Stop typing before posting the final message (respects min duration)
-      stopTyping();
-
-      // Append assistant final message
-      const botAck = {
-        role: 'assistant',
-        content:
-          'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
-      };
-      setMessages([...baseMessages, botAck]);
     } catch (e) {
       setError('Failed to generate preview. Please try again.');
     } finally {
