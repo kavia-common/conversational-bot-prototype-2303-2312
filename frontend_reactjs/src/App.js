@@ -444,6 +444,10 @@ function App() {
       // Client-side generation for now; API placeholder reserved.
       const html = generateSiteFromPrompt(nextPrompt.trim(), {});
       const sanitized = sanitizeGeneratedHtml(html);
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.debug('[App] Setting preview HTML. length=', sanitized?.length || 0);
+      }
       setCurrentHtml(sanitized);
 
       const botAck = {
@@ -471,8 +475,8 @@ function App() {
     setError('');
   };
 
-  // Guard: If this App is rendered within an iframe, do not render any Preview panes
-  // to avoid recursion / nested live previews.
+  // Note: We do not hide the preview just because we are in any iframe.
+  // The Preview component contains a relaxed guard to only hide when explicitly hosted.
   const isInIframe = typeof window !== 'undefined' && window.top !== window.self;
 
   return (
@@ -683,12 +687,10 @@ function App() {
               transition: 'box-shadow .2s ease'
             }}
           >
-            {!isInIframe && (
-              <Preview
-                html={previewSrcDoc}
-                height="calc(100vh - 64px - 32px)"
-              />
-            )}
+            <Preview
+              html={previewSrcDoc}
+              height="calc(100vh - 64px - 32px)"
+            />
           </div>
         </div>
       </main>
