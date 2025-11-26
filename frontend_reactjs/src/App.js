@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
+import Preview from './Preview';
 
 /**
  * Ocean Professional theme colors and simple design tokens.
@@ -34,11 +35,16 @@ function useIFrameSrcDoc(html) {
  * This runs entirely on the client and creates a small layout with:
  * - header, hero, sections, cards
  * - colors and accents derived from Ocean Professional and prompt hints
+ * IMPORTANT: The generated HTML must be standalone markup and must NOT:
+ *   - include React app bundles,
+ *   - mount any React root or elements with id="root",
+ *   - include <script> tags that would attempt to bootstrap an app,
+ *   - include any <iframe> tags.
  *
  * PUBLIC_INTERFACE
  */
 export function generateSiteFromPrompt(prompt, options = {}) {
-  /** This is a public function to generate a prototype HTML page string from a user prompt on the client. */
+  /** This is a public function to generate a prototype HTML page string from a user prompt on the client. It must not include iframes or app bundles. */
   const p = (prompt || '').toLowerCase();
 
   // Detect layout hints
@@ -409,6 +415,18 @@ function App() {
     await new Promise((r) => setTimeout(r, 300));
   };
 
+  // Strip any nested iframe/script tags before we store the generated html.
+  const sanitizeGeneratedHtml = (html) => {
+    if (!html || typeof html !== 'string') return '';
+    let out = html;
+    out = out.replace(/<iframe[\s\S]*?<\/iframe>/gi, '');
+    out = out.replace(/<iframe[^>]*\/>/gi, '');
+    out = out.replace(/<script[\s\S]*?<\/script>/gi, '');
+    out = out.replace(/\son\w+="[^"]*"/gi, '').replace(/\son\w+='[^']*'/gi, '');
+    out = out.replace(/id\s*=\s*["']root["']/gi, 'id="preview-root"');
+    return out;
+  };
+
   const handleGenerate = async (nextPrompt) => {
     const err = validate(nextPrompt);
     if (err) {
@@ -425,7 +443,8 @@ function App() {
 
       // Client-side generation for now; API placeholder reserved.
       const html = generateSiteFromPrompt(nextPrompt.trim(), {});
-      setCurrentHtml(html);
+      const sanitized = sanitizeGeneratedHtml(html);
+      setCurrentHtml(sanitized);
 
       const botAck = {
         role: 'assistant',
@@ -451,6 +470,10 @@ function App() {
     setCurrentHtml('');
     setError('');
   };
+
+  // Guard: If this App is rendered within an iframe, do not render any Preview panes
+  // to avoid recursion / nested live previews.
+  const isInIframe = typeof window !== 'undefined' && window.top !== window.self;
 
   return (
     <div
@@ -660,12 +683,12 @@ function App() {
               transition: 'box-shadow .2s ease'
             }}
           >
-            <iframe
-              title="Prototype Preview"
-              sandbox="allow-same-origin allow-forms allow-scripts"
-              style={{ width: '100%', height: 'calc(100vh - 64px - 32px)', border: 'none' }}
-              srcDoc={previewSrcDoc}
-            />
+            {!isInIframe && (
+              <Preview
+                html={previewSrcDoc}
+                height="calc(100vh - 64px - 32px)"
+              />
+            )}
           </div>
         </div>
       </main>
