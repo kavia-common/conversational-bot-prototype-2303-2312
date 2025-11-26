@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
 import Preview from './Preview';
 import TopBar from './components/TopBar';
@@ -6,6 +6,7 @@ import MessageList from './components/MessageList';
 import ChatInput from './components/ChatInput';
 import { ChatProvider, useChatActions, useChatState } from './state/chatStore';
 import { generateSiteFromPrompt, sanitizeGeneratedHtml } from './utils/generation';
+import useTypingIndicator from './hooks/useTypingIndicator';
 
 /**
  * Ocean Professional theme colors and simple design tokens.
@@ -41,6 +42,9 @@ function AppInner() {
   const { setMessages, setHtml, setGenerating, setError, setTheme, reset } = useChatActions();
   const [input, setInput] = useState('');
 
+  // Typing indicator for assistant streaming UX
+  const { isTyping, indicatorText, startTyping, stopTyping } = useTypingIndicator();
+
   // Read API base from env; normalize to a string and avoid mixing ?? with logical operators
   const envApi = process.env.REACT_APP_API_BASE;
   const apiBase = typeof envApi === 'string' ? envApi : '';
@@ -57,8 +61,10 @@ function AppInner() {
     return '';
   };
 
-  const simulateThinking = async () => {
-    await new Promise((r) => setTimeout(r, 300));
+  const simulateThinking = async (minMs = 500, maxMs = 1200) => {
+    // Randomized delay to feel more natural
+    const jitter = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    await new Promise((r) => setTimeout(r, jitter));
   };
 
   const handleGenerate = async (nextPrompt) => {
@@ -72,10 +78,17 @@ function AppInner() {
 
     // Append user message
     const userMsg = { role: 'user', content: nextPrompt.trim() };
-    setMessages([...messages, userMsg]);
+    const baseMessages = [...messages, userMsg];
+    setMessages(baseMessages);
+
+    // Start assistant typing indicator
+    startTyping({ baseText: 'Assistant is typing', intervalMs: 300, maxDots: 3, minDurationMs: 900 });
 
     try {
-      await simulateThinking();
+      // Simulate some "thinking" time and generation work
+      await simulateThinking(600, 1400);
+
+      // Generate preview HTML locally (client mode)
       const html = generateSiteFromPrompt(nextPrompt.trim(), {});
       const sanitized = sanitizeGeneratedHtml(html);
       if (process.env.NODE_ENV !== 'production') {
@@ -84,16 +97,20 @@ function AppInner() {
       }
       setHtml(sanitized);
 
+      // Stop typing before posting the final message (respects min duration)
+      stopTyping();
+
+      // Append assistant final message
       const botAck = {
         role: 'assistant',
         content:
           'Preview updated. You can refine with follow-up prompts like "make it dark", "add a contact section", or "add portfolio projects".'
       };
-      // Append bot acknowledgement
-      setMessages([...messages, userMsg, botAck]);
+      setMessages([...baseMessages, botAck]);
     } catch (e) {
       setError('Failed to generate preview. Please try again.');
     } finally {
+      // Keep button disabled only while "generating". Typing is handled separately.
       setGenerating(false);
     }
   };
@@ -111,6 +128,12 @@ function AppInner() {
 
   // Note: We do not hide the preview just because we are in any iframe.
   const isInIframe = typeof window !== 'undefined' && window.top !== window.self;
+
+  // Derive a temporary "typing" message that appears only while the hook is typing.
+  const renderedMessages = useMemo(() => {
+    if (!isTyping) return messages;
+    return [...messages, { role: 'assistant', content: indicatorText }];
+  }, [messages, isTyping, indicatorText]);
 
   return (
     <div
@@ -137,7 +160,7 @@ function AppInner() {
         }}
       >
         <TopBar theme={theme} onToggleTheme={toggleTheme} onReset={handleReset} />
-        <MessageList messages={messages} isGenerating={isGenerating} />
+        <MessageList messages={renderedMessages} isGenerating={isGenerating && !isTyping} />
         <ChatInput
           input={input}
           setInput={setInput}

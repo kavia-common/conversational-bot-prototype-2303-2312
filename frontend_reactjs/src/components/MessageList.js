@@ -49,6 +49,8 @@ export default function MessageList({ messages, isGenerating }) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isGenerating]);
 
+  const hasAssistantTyping = messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && typeof messages[messages.length - 1]?.content === 'string' && /typing|thinking/i.test(messages[messages.length - 1].content);
+
   return (
     <div
       style={{
@@ -61,7 +63,8 @@ export default function MessageList({ messages, isGenerating }) {
       {messages.map((m, idx) => (
         <ChatMessage key={idx} role={m.role} content={m.content} />
       ))}
-      {isGenerating && <ChatMessage role="assistant" content="Thinking..." />}
+      {/* Fallback "Thinking..." only if generating and no explicit typing message is present */}
+      {isGenerating && !hasAssistantTyping && <ChatMessage role="assistant" content="Thinking..." />}
       <div ref={chatEndRef} />
     </div>
   );
