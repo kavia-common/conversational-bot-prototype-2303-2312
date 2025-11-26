@@ -4,6 +4,13 @@ import { generateOnce, streamGenerate } from '../api/generatorApi';
 /**
  * PUBLIC_INTERFACE
  * Hook to manage generation (streaming preferred with fallback), maintain buffers and UI status.
+ *
+ * Notes:
+ * - Some backends emit SSE events with shapes:
+ *   * event:chunk data: {"type":"code","payload":"...partial or full code..."}
+ *   * event:chunk data: {"type":"meta","payload":{"title":"...","sections":[...]}}
+ *   * event:done  data: {"html":"<!doctype ...>", "content":"...", "done":true}
+ * - We now set currentHtml when a final html payload is received to ensure PreviewPage is not empty.
  */
 export function useStreamedGenerator() {
   const [isStreaming, setIsStreaming] = useState(false);
@@ -11,7 +18,7 @@ export function useStreamedGenerator() {
   const [codeBuffer, setCodeBuffer] = useState('');
   const [meta, setMeta] = useState({ title: '', sections: [] });
   const [error, setError] = useState('');
-  const [showCode, setShowCode] = useState(false); // Preview/Code toggle
+  const [showCode, setShowCode] = useState(false); // Preview/Code toggle (default false shows Preview)
   const [currentHtml, setCurrentHtml] = useState(''); // sanitized final html
   const abortRef = useRef(null);
   const lastPromptRef = useRef('');
@@ -24,7 +31,7 @@ export function useStreamedGenerator() {
     setError('');
     setCurrentHtml('');
     if (abortRef.current) {
-      abortRef.current.abort();
+      try { abortRef.current.abort?.(); } catch { /* noop */ }
       abortRef.current = null;
     }
   }, []);
@@ -48,11 +55,22 @@ export function useStreamedGenerator() {
               if (evt?.type === 'status') {
                 setStatus(String(evt.payload || ''));
               } else if (evt?.type === 'code') {
-                setCodeBuffer(String(evt.payload || ''));
+                const next = String(evt.payload || '');
+                setCodeBuffer(next);
+                if (process.env.NODE_ENV !== 'production') {
+                  // eslint-disable-next-line no-console
+                  console.debug('[useStreamedGenerator] code chunk length=', next.length);
+                }
               } else if (evt?.type === 'meta') {
                 setMeta(evt.payload || {});
               } else if (typeof evt?.html === 'string' && evt?.done) {
                 // Some backends may send final html in a single event on 'done'
+                if (process.env.NODE_ENV !== 'production') {
+                  // eslint-disable-next-line no-console
+                  console.debug('[useStreamedGenerator] final html received from stream, length=', evt.html.length);
+                }
+                setCurrentHtml(evt.html || '');
+                // If code not provided via code chunks, ensure codeBuffer not undefined
                 setCodeBuffer((prev) => prev || '');
               }
             } catch {
@@ -62,8 +80,7 @@ export function useStreamedGenerator() {
           onDone: () => {
             setIsStreaming(false);
             setStatus('Generation complete');
-            // The consumer should sanitize and render; we store raw buffer here.
-            setCurrentHtml(''); // Let the UI convert codeBuffer into rendered preview as needed
+            // Do not clear currentHtml here; keep whatever was set via stream finalizer
             abortRef.current = null;
           },
           onError: (err) => {
@@ -84,6 +101,7 @@ export function useStreamedGenerator() {
           .then(({ code, meta }) => {
             setCodeBuffer(code || '');
             setMeta(meta || {});
+            // Non-stream endpoint in backend returns { code, meta } (not html), so currentHtml remains for consumer to build.
             setIsStreaming(false);
             setStatus('Generation complete');
           })
@@ -104,7 +122,7 @@ export function useStreamedGenerator() {
 
   const cancel = useCallback(() => {
     if (abortRef.current) {
-      abortRef.current.abort();
+      try { abortRef.current.abort?.(); } catch { /* noop */ }
       abortRef.current = null;
     }
     setIsStreaming(false);

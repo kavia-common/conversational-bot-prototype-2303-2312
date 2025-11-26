@@ -79,6 +79,10 @@ function AppInner() {
           if (delta?.done) {
             if (typeof delta.html === 'string' && delta.html) {
               finalHtml = delta.html;
+              if (process.env.NODE_ENV !== 'production') {
+                // eslint-disable-next-line no-console
+                console.debug('[App] setting currentHtml from stream, length=', delta.html.length);
+              }
               setHtml(delta.html);
             }
             stopTyping();

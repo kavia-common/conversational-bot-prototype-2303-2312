@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
+import App from './App'; // Main chat layout + provider
 import PreviewPage from './PreviewPage';
 
 // Lightweight hash router to avoid adding dependencies.

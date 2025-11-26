@@ -25,12 +25,15 @@ function localGenerate(prompt) {
  * PUBLIC_INTERFACE
  * App
  * Main UI with prompt input, submit, preview/code toggle, and copy button.
+ *
+ * Note: This App.jsx is a lightweight demo variant. The main app entry used by index.js is App.js
+ * which includes chat layout and preview route integration.
  */
 export default function App() {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null); // { code, meta }
-  const [showCode, setShowCode] = useState(false); // toggle: false => Preview (default), true => Code
+  const [showCode, setShowCode] = useState(false); // false => Preview by default, true => Code
   const apiBase = process.env.REACT_APP_API_BASE || process.env.REACT_APP_BACKEND_URL || '';
 
   const handleSubmit = async (e) => {
@@ -64,16 +67,14 @@ export default function App() {
     if (!result?.code) return;
     try {
       await navigator.clipboard.writeText(result.code);
-      // Optional UX: Could show a toast; keeping it simple to avoid adding deps
     } catch {
-      // No-op
+      // No-op for environments without clipboard permission
     }
   };
 
   const renderedPreviewHtml = useMemo(() => {
     if (!result?.code) return '';
-    // Since we are not evaluating JSX, display code as a pre-rendered HTML block for preview:
-    // We wrap code in a styled div to show a "visual" container and not execute untrusted code.
+    // We do not evaluate code; show a safe container with code text.
     const safe = sanitizeHtml(result.code)
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
@@ -151,7 +152,6 @@ export default function App() {
 
           {result && !showCode && (
             <div
-              // Preview mode: DO NOT execute arbitrary code. We show a safe, non-executed preview container with code text.
               dangerouslySetInnerHTML={{ __html: renderedPreviewHtml }}
             />
           )}

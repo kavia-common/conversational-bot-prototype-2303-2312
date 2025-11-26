@@ -22,6 +22,10 @@ export default function PreviewPage() {
     document.body.style.margin = '0';
     document.body.style.padding = '0';
     document.body.style.background = '#ffffff';
+    if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
+      console.debug('[PreviewPage] mounted');
+    }
     return () => {
       document.body.style.margin = previous.margin;
       document.body.style.padding = previous.padding;
@@ -39,6 +43,11 @@ export default function PreviewPage() {
 
   const sanitized = useMemo(() => sanitizeGeneratedHtml(currentHtml || ''), [currentHtml]);
   const isEmpty = !sanitized || sanitized.trim().length === 0;
+
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line no-console
+    console.debug('[PreviewPage] currentHtml length=', (currentHtml || '').length, 'sanitized empty?', isEmpty);
+  }
 
   // Render only the content; if empty, show a minimal helper
   return (

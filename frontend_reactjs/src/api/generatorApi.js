@@ -6,6 +6,11 @@ const API_BASE =
   process.env.REACT_APP_BACKEND_URL ||
   '';
 
+if (process.env.NODE_ENV !== 'production') {
+  // eslint-disable-next-line no-console
+  console.debug('[generatorApi] API_BASE =', API_BASE || '(not set)');
+}
+
 function safeReasonFromText(status, text) {
   const snippet = (text || '').trim().slice(0, 300);
   return status >= 500
